@@ -1,0 +1,140 @@
+/* ==================== PLANNER PAGE ==================== */
+.plan-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+.plan-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.plan-card-header h3 { font-size: 1.1rem; }
+
+.plan-days-badge {
+  background: var(--accent-blue-light);
+  color: var(--accent-blue);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.plan-days-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.plan-day-group {
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+}
+
+.plan-day-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.plan-day-header h4 {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.plan-day-header .btn-rename {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all var(--transition);
+}
+
+.plan-day-header .btn-rename:hover {
+  background: var(--bg-tertiary);
+  color: var(--accent-blue);
+}
+
+.plan-workout-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  margin-bottom: 3px;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.plan-workout-item.superset-item { border-left: 3px solid var(--accent-blue); }
+.plan-workout-item.alternative-item { border-left: 3px solid var(--accent-orange); }
+
+.plan-workout-item .workout-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
+.plan-workout-item .workout-meta { font-size: 0.75rem; color: var(--text-muted); flex-shrink: 0; }
+.plan-workout-item .btn-xs { flex-shrink: 0; padding: 2px 5px; font-size: 0.7rem; }
+
+/* Link Badges */
+.link-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+
+.link-badge.superset {
+  background: var(--accent-blue-light);
+  color: var(--accent-blue);
+}
+
+.link-badge.alternative {
+  background: var(--accent-orange-light);
+  color: var(--accent-orange);
+}
+
+/* Link Items List (in modal) */
+.link-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  margin-bottom: 4px;
+  font-size: 0.85rem;
+}
+
+.plan-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* Habit Manage Card */
+.habit-manage-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.habit-manage-card .habit-info { flex: 1; }

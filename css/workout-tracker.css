@@ -1,0 +1,276 @@
+/* ==================== WORKOUT TRACKER PAGE ==================== */
+.tracker-date-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.tracker-date-bar input[type="date"] {
+  padding: 8px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+
+.tracker-plan-select {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.tracker-plan-select select {
+  padding: 8px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+
+.tracker-plan-select label { font-weight: 600; white-space: nowrap; }
+
+/* Day Tabs */
+.day-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.day-tab {
+  padding: 8px 18px;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.day-tab:hover {
+  border-color: var(--accent-blue);
+  color: var(--text-primary);
+}
+
+.day-tab.active {
+  background: var(--accent-blue);
+  color: #fff;
+  border-color: var(--accent-blue);
+}
+
+.day-tab .day-tab-label {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.day-tab.active .day-tab-label {
+  opacity: 0.9;
+}
+
+.day-tab .day-tab-count {
+  font-size: 0.7rem;
+  background: rgba(255,255,255,0.2);
+  padding: 1px 8px;
+  border-radius: 10px;
+}
+
+.day-tab.active .day-tab-count {
+  background: rgba(255,255,255,0.3);
+}
+
+/* Tracker Cards */
+.tracker-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.tracker-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition);
+}
+
+.tracker-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.tracker-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.tracker-card-title { font-weight: 600; font-size: 1.05rem; }
+
+.tracker-card-badge {
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.badge-strength { background: var(--accent-blue-light); color: var(--accent-blue); }
+.badge-cardio { background: var(--accent-orange-light); color: var(--accent-orange); }
+.badge-isolation { background: var(--accent-purple-light); color: var(--accent-purple); }
+
+.tracker-card-muscle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.pr-row { display: flex; gap: 16px; margin-bottom: 12px; }
+
+.pr-item {
+  flex: 1;
+  text-align: center;
+  padding: 8px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+}
+
+.pr-item .pr-label { font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 2px; }
+.pr-item .pr-value { font-size: 1.1rem; font-weight: 700; }
+
+.new-pr-message {
+  background: var(--accent-green-light);
+  color: var(--accent-green);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 12px;
+  animation: pulseGreen 1.5s infinite;
+}
+
+.tracker-card-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+.weight-mode-tag {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+.weight-mode-tag.perside {
+  background: var(--accent-orange-light);
+  color: var(--accent-orange);
+}
+
+.weight-mode-tag.combined {
+  background: var(--accent-blue-light);
+  color: var(--accent-blue);
+}
+
+.tracker-log-summary {
+  margin-bottom: 12px;
+  padding: 8px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+}
+
+/* Workout History */
+.history-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+}
+
+.history-entry .history-date { font-weight: 600; font-size: 0.9rem; }
+.history-entry .history-stats { font-size: 0.85rem; color: var(--text-secondary); }
+.history-entry .history-actions { display: flex; gap: 6px; }
+
+/* Superset & Alternative Groups */
+.superset-group,
+.alternative-group {
+  grid-column: 1 / -1;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 4px;
+}
+
+.superset-group { border-color: var(--accent-blue); background: rgba(59,130,246,0.04); }
+.alternative-group { border-color: var(--accent-orange); background: rgba(245,158,11,0.04); }
+
+.group-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+  padding: 4px 12px;
+  border-radius: 12px;
+  display: inline-block;
+}
+
+.superset-label { background: var(--accent-blue-light); color: var(--accent-blue); }
+.alternative-label { background: var(--accent-orange-light); color: var(--accent-orange); }
+
+.group-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.alt-or-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1rem;
+  color: var(--accent-orange);
+  grid-column: 1 / -1;
+  padding: 4px 0;
+}
+
+.alt-or-divider::before,
+.alt-or-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--accent-orange);
+  opacity: 0.3;
+  margin: 0 12px;
+}
+
+.tracker-card.alt-dimmed {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+@media (max-width: 768px) {
+  .group-cards { grid-template-columns: 1fr; }
+  .tracker-cards { grid-template-columns: 1fr; }
+  .pr-row { flex-direction: column; gap: 8px; }
+}

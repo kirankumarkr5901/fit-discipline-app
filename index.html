@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#3b82f6" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="FitDisciple" />
+  <meta name="description" content="Your personal fitness companion — track workouts, habits & rewards." />
+  <title>Fit‑Disciple</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="assets/icon-192.svg" />
+  <link rel="apple-touch-icon" href="assets/icon-192.png" />
+
+  <!-- CSS – split per section -->
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/layout.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/auth.css" />
+  <link rel="stylesheet" href="css/home.css" />
+  <link rel="stylesheet" href="css/planner.css" />
+  <link rel="stylesheet" href="css/workout-tracker.css" />
+  <link rel="stylesheet" href="css/run-tracker.css" />
+  <link rel="stylesheet" href="css/habits.css" />
+  <link rel="stylesheet" href="css/rewards.css" />
+
+  <!-- Firebase SDK (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <!-- ======== NAV (hidden until signed in) ======== -->
+  <nav id="main-nav" style="display:none;">
+    <div class="nav-brand" onclick="navigateTo('home')">
+      <span class="brand-icon">🔥</span> Fit‑Disciple
+    </div>
+    <div class="nav-links">
+      <a href="#" data-page="home"            class="nav-link active" onclick="navigateTo('home')">Home</a>
+      <a href="#" data-page="planner"         class="nav-link"        onclick="navigateTo('planner')">Planner</a>
+      <a href="#" data-page="workout-tracker" class="nav-link"        onclick="navigateTo('workout-tracker')">Workout Tracker</a>
+      <a href="#" data-page="run-tracker"     class="nav-link"        onclick="navigateTo('run-tracker')">Run Tracker</a>
+      <a href="#" data-page="habits"          class="nav-link"        onclick="navigateTo('habits')">Habits</a>
+      <a href="#" data-page="rewards"         class="nav-link"        onclick="navigateTo('rewards')">Rewards</a>
+    </div>
+    <div class="nav-actions">
+      <button id="pwa-install-btn" class="btn btn-sm btn-primary" onclick="installPWA()" style="display:none;" title="Install App">📲 Install</button>
+      <button id="dark-mode-toggle" class="btn-icon" onclick="toggleDarkMode()" title="Toggle Dark Mode">🌙</button>
+      <div id="user-profile" class="user-profile" onclick="toggleUserDropdown()">
+        <img id="user-avatar" class="user-avatar" src="" alt="avatar" referrerpolicy="no-referrer" />
+        <span id="user-name" class="user-name"></span>
+        <div id="user-dropdown" class="user-dropdown">
+          <button class="user-dropdown-item danger" onclick="signOutUser()">🚪 Sign Out</button>
+        </div>
+      </div>
+      <button id="nav-hamburger" class="btn-icon hamburger" onclick="toggleMobileNav()">☰</button>
+    </div>
+  </nav>
+
+  <!-- Mobile Nav Overlay -->
+  <div id="mobile-nav-overlay" class="mobile-nav-overlay" onclick="toggleMobileNav()">
+    <div class="mobile-nav-menu" onclick="event.stopPropagation()">
+      <a href="#" onclick="navigateTo('home');toggleMobileNav()">🏠 Home</a>
+      <a href="#" onclick="navigateTo('planner');toggleMobileNav()">📋 Planner</a>
+      <a href="#" onclick="navigateTo('workout-tracker');toggleMobileNav()">💪 Workout Tracker</a>
+      <a href="#" onclick="navigateTo('run-tracker');toggleMobileNav()">🏃 Run Tracker</a>
+      <a href="#" onclick="navigateTo('habits');toggleMobileNav()">✅ Habits</a>
+      <a href="#" onclick="navigateTo('rewards');toggleMobileNav()">🏆 Rewards</a>
+      <hr style="border-color:var(--border-color);margin:8px 0" />
+      <a href="#" onclick="signOutUser();toggleMobileNav()">🚪 Sign Out</a>
+    </div>
+  </div>
+
+  <!-- ======== LOGIN PAGE ======== -->
+  <div id="login-page" style="display:flex;">
+    <div class="login-card">
+      <div class="login-logo">🔥</div>
+      <h1 class="login-title">Fit‑Disciple</h1>
+      <p class="login-subtitle">Your personal fitness companion.<br/>Sign in to track workouts, habits & rewards.</p>
+      <button class="google-btn" onclick="signInWithGoogle()">
+        <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18A10.96 10.96 0 0 0 1 12c0 1.77.42 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        Sign in with Google
+      </button>
+      <p class="login-footer">Your data is stored securely in the cloud</p>
+      <button id="pwa-install-btn-login" class="btn btn-outline" onclick="installPWA()" style="display:none;margin-top:12px;">📲 Install as App</button>
+      <p class="login-footer" style="margin-top:12px;">Developed by <strong>Kiran K R</strong> · <a href="mailto:kirankumarkr5901@gmail.com" style="color:var(--accent-blue);text-decoration:none;">kirankumarkr5901@gmail.com</a></p>
+    </div>
+  </div>
+
+  <!-- Page content injected by app.js -->
+  <main id="app-container" style="display:none;"></main>
+
+  <!-- Toast Notifications -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- JS – Firebase config first, then data layer, then auth, then page modules, then app -->
+  <script src="js/firebase-config.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/home.js"></script>
+  <script src="js/planner.js"></script>
+  <script src="js/workout-tracker.js"></script>
+  <script src="js/run-tracker.js"></script>
+  <script src="js/habits.js"></script>
+  <script src="js/rewards.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/auth.js"></script>
+
+  <!-- PWA Service Worker -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('SW registered:', reg.scope))
+          .catch(err => console.warn('SW registration failed:', err));
+      });
+    }
+  </script>
+</body>
+</html>

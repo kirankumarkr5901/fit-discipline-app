@@ -1,0 +1,26 @@
+/* ==================== REWARDS PAGE ==================== */
+.reward-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition);
+}
+
+.reward-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.reward-card .reward-icon { font-size: 2rem; margin-bottom: 8px; }
+.reward-card .reward-name { font-weight: 600; margin-bottom: 4px; }
+.reward-card .reward-cost {
+  color: var(--accent-blue);
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-bottom: 12px;
+}
+
+.reward-card .reward-claimed { color: var(--accent-green); font-weight: 600; }

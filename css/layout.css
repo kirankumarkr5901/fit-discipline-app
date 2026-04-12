@@ -1,0 +1,140 @@
+/* ==================== NAVIGATION ==================== */
+#main-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--nav-height);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  z-index: 1000;
+  box-shadow: var(--shadow-sm);
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.nav-brand {
+  font-size: 1.3rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.brand-icon { font-size: 1.5rem; }
+
+.nav-links {
+  display: flex;
+  gap: 4px;
+  margin-left: 40px;
+  flex: 1;
+}
+
+.nav-link {
+  text-decoration: none;
+  color: var(--text-secondary);
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+
+.nav-link:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+.nav-link.active {
+  color: var(--accent-blue);
+  background: var(--accent-blue-light);
+}
+
+.nav-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.hamburger { display: none; }
+
+/* Mobile Nav Overlay */
+.mobile-nav-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 2000;
+  backdrop-filter: blur(4px);
+}
+
+.mobile-nav-overlay.open {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding-top: var(--nav-height);
+}
+
+.mobile-nav-menu {
+  background: var(--bg-secondary);
+  width: 260px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-radius: 0 0 0 var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.mobile-nav-menu a {
+  text-decoration: none;
+  color: var(--text-primary);
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  transition: all var(--transition);
+}
+
+.mobile-nav-menu a:hover { background: var(--bg-tertiary); }
+
+/* ==================== MAIN CONTAINER ==================== */
+#app-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: calc(var(--nav-height) + 24px) 24px 40px;
+}
+
+.page {
+  display: none;
+  animation: fadeIn 0.3s ease;
+}
+
+.page.active { display: block; }
+
+/* ==================== RESPONSIVE NAV ==================== */
+@media (max-width: 768px) {
+  .nav-links { display: none; }
+
+  #main-nav {
+    justify-content: space-between;
+  }
+
+  .nav-brand {
+    flex: 0 0 auto;
+  }
+
+  .nav-actions {
+    flex: 1;
+    justify-content: end;
+    gap: 12px;
+  }
+
+  .hamburger { display: flex; }
+
+  #app-container { padding: calc(var(--nav-height) + 16px) 16px 30px; }
+}

@@ -1,0 +1,177 @@
+/* ==================== HABITS PAGE ==================== */
+.habits-date-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.habits-date-bar input[type="date"] {
+  padding: 8px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+
+/* DP Display */
+.habits-dp-bar,
+.rewards-dp-bar { margin-bottom: 24px; }
+
+.dp-display {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--gradient-primary);
+  color: #fff;
+  padding: 16px 24px;
+  border-radius: var(--radius-md);
+  flex-wrap: wrap;
+}
+
+.dp-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+
+.dp-action-btn {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  color: #fff !important;
+  font-size: 0.8rem !important;
+  padding: 4px 12px !important;
+}
+
+.dp-action-btn:hover {
+  background: rgba(255, 255, 255, 0.25) !important;
+}
+
+.dp-reset-btn:hover {
+  background: rgba(239, 68, 68, 0.4) !important;
+  border-color: rgba(239, 68, 68, 0.6) !important;
+}
+}
+
+.dp-display.large { padding: 24px 32px; font-size: 1.1rem; }
+.dp-icon { font-size: 1.5rem; }
+.dp-value { font-size: 2rem; font-weight: 700; }
+.dp-label { font-size: 0.9rem; opacity: 0.9; }
+
+/* Habit Checklist */
+.habits-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.habit-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  transition: all var(--transition);
+  cursor: pointer;
+}
+
+.habit-item:hover { box-shadow: var(--shadow-sm); }
+.habit-item.completed { border-color: var(--accent-green); background: var(--accent-green-light); }
+
+.habit-checkbox {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border-color);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all var(--transition);
+}
+
+.habit-item.completed .habit-checkbox {
+  background: var(--accent-green);
+  border-color: var(--accent-green);
+  color: #fff;
+}
+
+.habit-info { flex: 1; }
+.habit-info .habit-title { font-weight: 600; font-size: 0.95rem; }
+.habit-info .habit-meta { font-size: 0.8rem; color: var(--text-muted); }
+
+.habit-points-badge {
+  background: var(--accent-blue-light);
+  color: var(--accent-blue);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.habit-strict-badge {
+  background: var(--accent-red-light);
+  color: var(--accent-red);
+  padding: 4px 8px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Bonus Section */
+.bonus-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.bonus-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--accent-orange-light);
+  border: 1px solid var(--accent-orange);
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+}
+
+.bonus-badge.streak {
+  background: var(--accent-purple-light);
+  border-color: var(--accent-purple);
+}
+
+/* Actions */
+.actions-section { margin-bottom: 32px; }
+.actions-section h2 { margin-bottom: 12px; }
+
+.actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.action-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+}
+
+.action-item .action-name { flex: 1; font-weight: 500; }
+.action-item .action-points { font-weight: 700; min-width: 60px; text-align: center; }
+.action-item .action-points.positive { color: var(--accent-green); }
+.action-item .action-points.negative { color: var(--accent-red); }
+
+@media (max-width: 768px) {
+  .dp-display { flex-wrap: wrap; gap: 8px; }
+}
