@@ -94,6 +94,7 @@
 /* Day Sections (All days view) */
 .day-section {
   margin-bottom: 28px;
+  grid-column: 1 / -1;
 }
 
 .day-section-title {
@@ -181,15 +182,23 @@
   animation: pulseGreen 1.5s infinite;
 }
 
-.tracker-card-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.tracker-card-actions { display: flex; gap: 8px; align-items: center; }
+.tracker-card-actions .btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px; }
+.tracker-card-actions .btn-danger { flex: 0 0 auto; padding: 6px 10px; }
+
+.weight-mode-tag-row {
+  display: flex;
+  margin-bottom: 8px;
+}
 
 .weight-mode-tag {
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 12px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
   white-space: nowrap;
-  margin-left: auto;
+  width: 100%;
+  text-align: center;
 }
 
 .weight-mode-tag.perside {

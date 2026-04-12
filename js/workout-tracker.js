@@ -165,7 +165,7 @@ function loadWorkoutTracker() {
       const dayContent = renderWorkoutGroup(dayWorkouts, planId, date, dayLogs, plan);
       fullHtml += `<div class="day-section">
         <h3 class="day-section-title">${escapeHtml(dayName)}</h3>
-        ${dayContent}
+        <div class="tracker-cards">${dayContent}</div>
       </div>`;
     }
     container.innerHTML = fullHtml;
@@ -267,11 +267,11 @@ function buildTrackerCard(w, planId, date, dayLogs, plan, extraClass) {
         </div>
       </div>
       ${log ? `<div class="tracker-log-summary">📊 ${logSummary}</div>` : ''}
+      ${log && log.weightMode ? `<div class="weight-mode-tag-row"><span class="weight-mode-tag ${log.weightMode}">${log.weightMode === 'perside' ? '⚖️ Per Side' : '⚖️ Combined'}</span></div>` : ''}
       <div class="tracker-card-actions">
         <button class="btn btn-primary btn-sm" onclick="openLogWorkout('${planId}','${w.id}','${w.type}','${w.equipment || 'barbell'}')">${log ? '✏️ Edit' : '📝 Log'}</button>
         ${log ? `<button class="btn btn-danger btn-sm" onclick="deleteWorkoutLog('${planId}','${w.id}')">🗑️</button>` : ''}
         <button class="btn btn-outline btn-sm" onclick="showWorkoutHistory('${planId}','${w.id}','${escapeHtml(w.name)}','${w.type}')">📈 History</button>
-        ${log && log.weightMode ? `<span class="weight-mode-tag ${log.weightMode}">${log.weightMode === 'perside' ? 'Per Side' : 'Combined'}</span>` : ''}
       </div>
     </div>`;
 }
@@ -362,6 +362,16 @@ function openLogWorkout(planId, workoutId, workoutType, equipment) {
   const logs = DB.getWorkoutLogs();
   const existing = logs[date]?.[planId]?.[workoutId];
 
+  // Find most recent previous log for this workout to pre-fill
+  let prev = null;
+  if (!existing) {
+    const sortedDates = Object.keys(logs).filter(d => d < date).sort().reverse();
+    for (const d of sortedDates) {
+      if (logs[d]?.[planId]?.[workoutId]) { prev = logs[d][planId][workoutId]; break; }
+    }
+  }
+  const prefill = existing || prev;
+
   document.getElementById('log-workout-id').value = workoutId;
   document.getElementById('log-workout-plan-id').value = planId;
 
@@ -388,7 +398,7 @@ function openLogWorkout(planId, workoutId, workoutType, equipment) {
   if (workoutType === 'strength') {
     let weightFieldHtml;
     if (isBodyweight) {
-      const addedWeight = existing ? (existing.addedWeight != null ? existing.addedWeight : 0) : 0;
+      const addedWeight = prefill ? (prefill.addedWeight != null ? prefill.addedWeight : 0) : 0;
       const totalPreview = userBodyweight > 0 ? userBodyweight + addedWeight : '';
       weightFieldHtml = `
         <div class="form-row">
@@ -407,34 +417,34 @@ function openLogWorkout(planId, workoutId, workoutType, equipment) {
       weightFieldHtml = `
         <div class="form-row">
           <label>Weight (kg)</label>
-          <input type="number" id="log-weight" step="0.5" value="${existing ? existing.weight : ''}" placeholder="e.g., 80" />
+          <input type="number" id="log-weight" step="0.5" value="${prefill ? prefill.weight : ''}" placeholder="e.g., 80" />
         </div>`;
     }
     fields.innerHTML = weightFieldHtml + `
       <div class="form-row">
         <label>Reps</label>
-        <input type="number" id="log-reps" value="${existing ? existing.reps : ''}" placeholder="e.g., 10" />
+        <input type="number" id="log-reps" value="${prefill ? prefill.reps : ''}" placeholder="e.g., 10" />
       </div>
       <div class="form-row">
         <label>Sets</label>
-        <input type="number" id="log-sets" value="${existing ? existing.sets : ''}" placeholder="e.g., 3" />
+        <input type="number" id="log-sets" value="${prefill ? prefill.sets : ''}" placeholder="e.g., 3" />
       </div>
       <div class="form-row">
         <label>Weight Mode</label>
         <select id="log-weight-mode">
-          <option value="combined"${!existing || existing.weightMode !== 'perside' ? ' selected' : ''}>Combined</option>
-          <option value="perside"${existing && existing.weightMode === 'perside' ? ' selected' : ''}>Per Side</option>
+          <option value="combined"${!prefill || prefill.weightMode !== 'perside' ? ' selected' : ''}>Combined</option>
+          <option value="perside"${prefill && prefill.weightMode === 'perside' ? ' selected' : ''}>Per Side</option>
         </select>
       </div>`;
   } else {
     fields.innerHTML = `
       <div class="form-row">
         <label>Time (minutes)</label>
-        <input type="number" id="log-time" step="0.5" value="${existing ? existing.time : ''}" placeholder="e.g., 30" />
+        <input type="number" id="log-time" step="0.5" value="${prefill ? prefill.time : ''}" placeholder="e.g., 30" />
       </div>
       <div class="form-row">
         <label>Sets</label>
-        <input type="number" id="log-sets" value="${existing ? existing.sets : ''}" placeholder="e.g., 3" />
+        <input type="number" id="log-sets" value="${prefill ? prefill.sets : ''}" placeholder="e.g., 3" />
       </div>`;
   }
   openModal('log-workout-modal');
