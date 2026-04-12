@@ -14,6 +14,29 @@ function getRunTrackerTemplate() {
         <div class="run-points-banner-value" id="run-total-points">0</div>
         <div class="run-points-banner-label">Total Run Points Earned</div>
       </div>
+      <div class="run-points-actions">
+        <button class="btn btn-sm btn-outline" onclick="openRunPointsAdjust()" title="Add/remove points" style="color:#fff;border-color:rgba(255,255,255,0.4)">±</button>
+        <button class="btn btn-sm btn-outline" onclick="resetRunPoints()" title="Reset run points" style="color:#fff;border-color:rgba(255,255,255,0.4)">↺</button>
+      </div>
+    </div>
+
+    <!-- Run Points Adjust Modal -->
+    <div id="run-points-adjust-modal" class="modal-overlay" style="display:none;">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>Adjust Run Points</h2>
+          <button class="btn-icon" onclick="closeModal('run-points-adjust-modal')">&times;</button>
+        </div>
+        <div class="form-row">
+          <label>Points (use negative to deduct)</label>
+          <input type="number" id="run-points-adjust-value" placeholder="e.g. 50 or -20" />
+        </div>
+        <div class="form-row">
+          <label>Reason</label>
+          <input type="text" id="run-points-adjust-reason" placeholder="e.g. Correction" />
+        </div>
+        <button class="btn btn-primary" onclick="applyRunPointsAdjust()">Apply</button>
+      </div>
     </div>
 
     <div class="form-card">
@@ -140,14 +163,16 @@ function logRun() {
   const runs = DB.getRunLogs();
   const lifetimeBestPace = getLifetimeBestPace();
 
-  const run = { id: uid(), date, distance, time, pace: pace.toFixed(2) };
+  const run = { id: uid(), date, distance, time, pace: pace.toFixed(2), pointsEarned: 0 };
   runs.push(run);
   runs.sort((a, b) => b.date.localeCompare(a.date));
-  DB.saveRunLogs(runs);
 
+  let totalPointsForRun = 0;
   const completedKm = Math.floor(distance);
   if (completedKm > 0) {
-    addDisciplinePoints(completedKm * 10, `Running: ${completedKm}km completed`);
+    const base = completedKm * 10;
+    addDisciplinePoints(base, `Running: ${completedKm}km completed`);
+    totalPointsForRun += base;
   }
 
   if (lifetimeBestPace > 0 && runs.length > 1) {
@@ -157,28 +182,36 @@ function logRun() {
     if (rank === 1) {
       const bonus = Math.round(distance * 2);
       addDisciplinePoints(bonus, `New #1 PR pace! (${pace.toFixed(2)} min/km)`);
+      totalPointsForRun += bonus;
       document.getElementById('run-new-pr-banner').style.display = 'block';
-      showToast(`New PR! 🎉 +${completedKm * 10 + bonus} discipline points!`, 'success');
+      showToast(`New PR! 🎉 +${totalPointsForRun} discipline points!`, 'success');
     } else if (rank === 2) {
       const bonus = Math.round(distance * 1.5);
       addDisciplinePoints(bonus, `New #2 PR pace! (${pace.toFixed(2)} min/km)`);
-      showToast(`2nd best pace! +${completedKm * 10 + bonus} points!`, 'success');
+      totalPointsForRun += bonus;
+      showToast(`2nd best pace! +${totalPointsForRun} points!`, 'success');
     } else if (rank === 3) {
       const bonus = Math.round(distance);
       addDisciplinePoints(bonus, `New #3 PR pace! (${pace.toFixed(2)} min/km)`);
-      showToast(`3rd best pace! +${completedKm * 10 + bonus} points!`, 'success');
+      totalPointsForRun += bonus;
+      showToast(`3rd best pace! +${totalPointsForRun} points!`, 'success');
     } else {
-      showToast(`Run logged! +${completedKm * 10} discipline points 🏃`, 'success');
+      showToast(`Run logged! +${totalPointsForRun} discipline points 🏃`, 'success');
       document.getElementById('run-new-pr-banner').style.display = 'none';
     }
   } else if (runs.length === 1) {
     const bonus = Math.round(distance * 2);
     addDisciplinePoints(bonus, `First run PR! (${pace.toFixed(2)} min/km)`);
+    totalPointsForRun += bonus;
     document.getElementById('run-new-pr-banner').style.display = 'block';
-    showToast(`First run logged! 🎉 +${completedKm * 10 + bonus} points!`, 'success');
+    showToast(`First run logged! 🎉 +${totalPointsForRun} points!`, 'success');
   } else {
-    showToast(`Run logged! +${completedKm * 10} discipline points 🏃`, 'success');
+    showToast(`Run logged! +${totalPointsForRun} discipline points 🏃`, 'success');
   }
+
+  // Store points earned on the run for proper deduction on delete
+  run.pointsEarned = totalPointsForRun;
+  DB.saveRunLogs(runs);
 
   addActivity('run', `Ran ${distance}km in ${time}min (${pace.toFixed(2)} min/km)`);
   document.getElementById('run-distance').value = '';
@@ -288,9 +321,16 @@ function loadRunHistory() {
 function deleteRun(runId) {
   if (!confirm('Delete this run?')) return;
   let runs = DB.getRunLogs();
+  const run = runs.find(r => r.id === runId);
+
+  // Deduct points earned from this run
+  if (run && run.pointsEarned) {
+    addDisciplinePoints(-run.pointsEarned, `Run deleted: -${run.pointsEarned} pts (${run.distance}km)`);
+  }
+
   runs = runs.filter(r => r.id !== runId);
   DB.saveRunLogs(runs);
-  showToast('Run deleted', 'info');
+  showToast('Run deleted & points deducted', 'info');
   loadRunStats();
   loadRunHistory();
   renderRunChart();
@@ -362,6 +402,46 @@ function saveEditRun() {
   loadRunStats();
   loadRunHistory();
   renderRunChart();
+}
+
+/* ---- Run Points Adjust / Reset ---- */
+function openRunPointsAdjust() {
+  document.getElementById('run-points-adjust-value').value = '';
+  document.getElementById('run-points-adjust-reason').value = '';
+  openModal('run-points-adjust-modal');
+}
+
+function applyRunPointsAdjust() {
+  const val = parseInt(document.getElementById('run-points-adjust-value').value);
+  const reason = document.getElementById('run-points-adjust-reason').value.trim() || 'Run points adjustment';
+  if (!val || val === 0) { showToast('Enter a non-zero value', 'warning'); return; }
+
+  addDisciplinePoints(val, `Run adjust: ${reason}`);
+  closeModal('run-points-adjust-modal');
+  showToast(`${val > 0 ? '+' : ''}${val} run points applied`, 'success');
+  loadRunStats();
+}
+
+function resetRunPoints() {
+  if (!confirm('Reset all run points to 0? This will deduct all accumulated run points from your total discipline points.')) return;
+
+  const pointsLog = DB.getPointsLog();
+  const runPoints = pointsLog
+    .filter(p => p.description && (p.description.startsWith('Running:') || p.description.includes('PR pace') || p.description.startsWith('First run') || p.description.startsWith('Run adjust') || p.description.startsWith('Run deleted') || p.description.startsWith('Run points reset')))
+    .reduce((sum, p) => sum + (p.points || 0), 0);
+
+  if (runPoints !== 0) {
+    addDisciplinePoints(-runPoints, `Run points reset (-${runPoints} pts)`);
+  }
+
+  // Clear pointsEarned on all runs
+  const runs = DB.getRunLogs();
+  for (const r of runs) r.pointsEarned = 0;
+  DB.saveRunLogs(runs);
+
+  showToast('Run points reset to 0', 'info');
+  loadRunStats();
+  loadRunHistory();
 }
 
 function renderRunChart() {
