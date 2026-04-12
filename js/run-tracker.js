@@ -253,9 +253,16 @@ function loadRunStats() {
   // Calculate total run points from points log
   const pointsLog = DB.getPointsLog();
   const runPoints = pointsLog
-    .filter(p => p.description && (p.description.startsWith('Running:') || p.description.includes('PR pace') || p.description.startsWith('First run')))
+    .filter(p => p.description && (
+      p.description.startsWith('Running:') ||
+      p.description.includes('PR pace') ||
+      p.description.startsWith('First run') ||
+      p.description.startsWith('Run deleted') ||
+      p.description.startsWith('Run adjust') ||
+      p.description.startsWith('Run points reset')
+    ))
     .reduce((sum, p) => sum + (p.points || 0), 0);
-  document.getElementById('run-total-points').textContent = runPoints;
+  document.getElementById('run-total-points').textContent = Math.max(0, runPoints);
 
   if (todayRuns.length > 0 && recordedRuns.length > 0) {
     const bestToday = Math.min(...todayRuns.map(r => parseFloat(r.pace)));

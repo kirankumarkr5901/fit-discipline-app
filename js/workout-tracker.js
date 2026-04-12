@@ -212,7 +212,6 @@ function renderWorkoutGroup(workouts, planId, date, dayLogs, plan) {
           <div class="group-label alternative-label">🔀 ALTERNATIVE — pick one</div>
           <div class="group-cards">
             ${buildTrackerCard(w, planId, date, dayLogs, plan, dimA)}
-            <div class="alt-or-divider">OR</div>
             ${buildTrackerCard(partner, planId, date, dayLogs, plan, dimB)}
           </div>
         </div>`;

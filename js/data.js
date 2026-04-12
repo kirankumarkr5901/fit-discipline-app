@@ -245,6 +245,7 @@ function addActivity(type, text) {
 function addDisciplinePoints(amount, description) {
   let dp = DB.getDP();
   dp += amount;
+  if (dp < 0) dp = 0;
   DB.saveDP(dp);
 
   const log = DB.getPointsLog();
@@ -265,9 +266,16 @@ function updateDPDisplays() {
   if (runPointsEl) {
     const pointsLog = DB.getPointsLog();
     const runPoints = pointsLog
-      .filter(p => p.description && (p.description.startsWith('Running:') || p.description.includes('PR pace') || p.description.startsWith('First run')))
+      .filter(p => p.description && (
+        p.description.startsWith('Running:') ||
+        p.description.includes('PR pace') ||
+        p.description.startsWith('First run') ||
+        p.description.startsWith('Run deleted') ||
+        p.description.startsWith('Run adjust') ||
+        p.description.startsWith('Run points reset')
+      ))
       .reduce((sum, p) => sum + (p.points || 0), 0);
-    runPointsEl.textContent = runPoints;
+    runPointsEl.textContent = Math.max(0, runPoints);
   }
 }
 
