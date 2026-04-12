@@ -56,6 +56,24 @@ function getWorkoutTrackerTemplate() {
           <canvas id="workout-progress-chart"></canvas>
         </div>
       </div>
+    </div>
+
+    <!-- Swap Workout Modal -->
+    <div id="swap-workout-modal" class="modal-overlay" style="display:none;">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>Move Workout</h2>
+          <button class="btn-icon" onclick="closeModal('swap-workout-modal')">&times;</button>
+        </div>
+        <div class="form-row">
+          <label>Move to</label>
+          <select id="swap-workout-target"></select>
+        </div>
+        <input type="hidden" id="swap-workout-id" />
+        <input type="hidden" id="swap-workout-plan-id" />
+        <input type="hidden" id="swap-workout-from-day" />
+        <button class="btn btn-primary" onclick="confirmSwapWorkout()">Move</button>
+      </div>
     </div>`;
 }
 
@@ -105,10 +123,10 @@ function loadWorkoutTracker() {
   // Build day tabs
   renderDayTabs(plan);
 
-  // Gather workouts based on selected day
+  // Gather workouts based on selected day (exclude optional from regular "all" flow)
   const allWorkouts = [];
   const daysToShow = activeDay === 'all'
-    ? Object.keys(plan.workouts)
+    ? Object.keys(plan.workouts).filter(d => d !== 'optional')
     : [activeDay];
 
   for (const day of daysToShow) {
@@ -171,6 +189,27 @@ function loadWorkoutTracker() {
     container.innerHTML = fullHtml;
   } else {
     container.innerHTML = renderWorkoutGroup(filtered, planId, date, dayLogs, plan);
+  }
+
+  // Render optional workouts section
+  const optionalWorkouts = (plan.workouts['optional'] || []).map(w => ({ ...w, day: 'optional' }));
+  const optionalFiltered = activeMuscleFilter === 'all'
+    ? optionalWorkouts
+    : optionalWorkouts.filter(w => w.muscle === activeMuscleFilter);
+  if (optionalFiltered.length > 0 && activeDay !== 'optional') {
+    const optContent = renderWorkoutGroup(optionalFiltered, planId, date, dayLogs, plan);
+    const optLoggedCount = optionalFiltered.filter(w => dayLogs[w.id]).length;
+    container.innerHTML += `
+      <div class="optional-section">
+        <div class="optional-section-header" onclick="this.parentElement.classList.toggle('collapsed')">
+          <h3 class="optional-section-title">⭐ Optional Workouts</h3>
+          <span class="optional-section-meta">${optLoggedCount}/${optionalFiltered.length} done</span>
+          <span class="optional-toggle-icon">▾</span>
+        </div>
+        <div class="optional-section-body">
+          <div class="tracker-cards">${optContent}</div>
+        </div>
+      </div>`;
   }
 }
 
@@ -244,7 +283,7 @@ function buildTrackerCard(w, planId, date, dayLogs, plan, extraClass) {
         logSummary = `${log.weight}kg${modeLabel} × ${log.reps} reps × ${log.sets} sets`;
       }
     } else {
-      logSummary = `${log.time} min × ${log.sets} sets`;
+      logSummary = `${log.time} min × ${log.sets} sets${log.weight ? ' · ' + log.weight + 'kg' : ''}`;
     }
   }
 
@@ -272,6 +311,7 @@ function buildTrackerCard(w, planId, date, dayLogs, plan, extraClass) {
         <button class="btn btn-primary btn-sm" onclick="openLogWorkout('${planId}','${w.id}','${w.type}','${w.equipment || 'barbell'}')">${log ? '✏️ Edit' : '📝 Log'}</button>
         ${log ? `<button class="btn btn-danger btn-sm" onclick="deleteWorkoutLog('${planId}','${w.id}')">🗑️</button>` : ''}
         <button class="btn btn-outline btn-sm" onclick="showWorkoutHistory('${planId}','${w.id}','${escapeHtml(w.name)}','${w.type}')">📈 History</button>
+        <button class="btn btn-outline btn-sm swap-btn" onclick="openSwapWorkout('${planId}','${w.id}','${w.day}')" title="${w.day === 'optional' ? 'Move to a day' : 'Move to optional'}">🔄</button>
       </div>
     </div>`;
 }
@@ -294,6 +334,15 @@ function renderDayTabs(plan) {
         <span>${escapeHtml(dayName)}</span>
         <span class="day-tab-label">Day ${d}</span>
         <span class="day-tab-count">${count}</span>
+      </div>`;
+  }
+
+  const optCount = (plan.workouts['optional'] || []).length;
+  if (optCount > 0) {
+    html += `
+      <div class="day-tab optional-tab ${activeDay === 'optional' ? 'active' : ''}" onclick="setActiveDay('optional')">
+        <span>⭐ Optional</span>
+        <span class="day-tab-count">${optCount}</span>
       </div>`;
   }
 
@@ -445,6 +494,10 @@ function openLogWorkout(planId, workoutId, workoutType, equipment) {
       <div class="form-row">
         <label>Sets</label>
         <input type="number" id="log-sets" value="${prefill ? prefill.sets : ''}" placeholder="e.g., 3" />
+      </div>
+      <div class="form-row">
+        <label>Weight (kg) <span style="font-size:0.8em;color:var(--text-muted)">optional</span></label>
+        <input type="number" id="log-weight-optional" step="0.5" value="${prefill && prefill.weight ? prefill.weight : ''}" placeholder="e.g., 10" />
       </div>`;
   }
   openModal('log-workout-modal');
@@ -501,6 +554,8 @@ function saveWorkoutLog() {
     const sets = document.getElementById('log-sets').value;
     if (!time || !sets) { showToast('Fill all fields', 'warning'); return; }
     logData = { time: parseFloat(time), sets: parseInt(sets), type: wType };
+    const optWeight = document.getElementById('log-weight-optional')?.value;
+    if (optWeight) logData.weight = parseFloat(optWeight);
   }
 
   const oldLifetimePR = getLifetimePRValue(workoutId, planId, wType);
@@ -544,6 +599,65 @@ function deleteWorkoutLog(planId, workoutId) {
     addActivity('workout', 'Deleted a workout log');
     loadWorkoutTracker();
   }
+}
+
+/* ---- Swap / Move Workout Between Days ---- */
+function openSwapWorkout(planId, workoutId, fromDay) {
+  const plans = DB.getPlans();
+  const plan = plans.find(p => p.id === planId);
+  if (!plan) return;
+
+  document.getElementById('swap-workout-id').value = workoutId;
+  document.getElementById('swap-workout-plan-id').value = planId;
+  document.getElementById('swap-workout-from-day').value = fromDay;
+
+  const select = document.getElementById('swap-workout-target');
+  select.innerHTML = '';
+  for (let i = 1; i <= plan.days; i++) {
+    if (String(i) === String(fromDay)) continue;
+    const dayName = getPlanDayName(plan, i);
+    select.innerHTML += `<option value="${i}">${escapeHtml(dayName)}</option>`;
+  }
+  if (fromDay !== 'optional') {
+    select.innerHTML += `<option value="optional">⭐ Optional</option>`;
+  }
+  openModal('swap-workout-modal');
+}
+
+function confirmSwapWorkout() {
+  const planId = document.getElementById('swap-workout-plan-id').value;
+  const workoutId = document.getElementById('swap-workout-id').value;
+  const fromDay = document.getElementById('swap-workout-from-day').value;
+  const toDay = document.getElementById('swap-workout-target').value;
+
+  const plans = DB.getPlans();
+  const plan = plans.find(p => p.id === planId);
+  if (!plan) return;
+
+  const fromList = plan.workouts[fromDay] || [];
+  const wIndex = fromList.findIndex(w => w.id === workoutId);
+  if (wIndex === -1) return;
+
+  const w = fromList.splice(wIndex, 1)[0];
+
+  // Clean up superset/alternative links when moving
+  delete w.supersetWith;
+  delete w.alternativeOf;
+  for (const d of Object.keys(plan.workouts)) {
+    for (const ww of plan.workouts[d]) {
+      if (ww.supersetWith === workoutId) delete ww.supersetWith;
+      if (ww.alternativeOf === workoutId) delete ww.alternativeOf;
+    }
+  }
+
+  if (!plan.workouts[toDay]) plan.workouts[toDay] = [];
+  plan.workouts[toDay].push(w);
+  DB.savePlans(plans);
+
+  const toName = toDay === 'optional' ? 'Optional' : getPlanDayName(plan, toDay);
+  closeModal('swap-workout-modal');
+  showToast(`Moved "${w.name}" to ${toName}`, 'success');
+  loadWorkoutTracker();
 }
 
 /* ---- Workout History + Chart ---- */

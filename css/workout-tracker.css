@@ -91,6 +91,16 @@
   background: rgba(255,255,255,0.3);
 }
 
+.day-tab.optional-tab {
+  border-color: var(--accent-orange);
+  color: var(--accent-orange);
+}
+
+.day-tab.optional-tab.active {
+  background: var(--accent-orange);
+  color: #fff;
+}
+
 /* Day Sections (All days view) */
 .day-section {
   margin-bottom: 28px;
@@ -106,6 +116,62 @@
   background: var(--bg-tertiary);
   border-radius: var(--radius-sm);
   border-left: 4px solid var(--accent-blue);
+}
+
+/* Optional Workouts Section */
+.optional-section {
+  grid-column: 1 / -1;
+  margin-top: 12px;
+  border: 2px dashed var(--accent-orange);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.optional-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(245, 158, 11, 0.08);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--transition);
+}
+
+.optional-section-header:hover {
+  background: rgba(245, 158, 11, 0.14);
+}
+
+.optional-section-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--accent-orange);
+  margin: 0;
+}
+
+.optional-section-meta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.optional-toggle-icon {
+  font-size: 1.1rem;
+  color: var(--accent-orange);
+  transition: transform var(--transition);
+}
+
+.optional-section.collapsed .optional-toggle-icon {
+  transform: rotate(-90deg);
+}
+
+.optional-section-body {
+  padding: 16px;
+  transition: max-height 0.3s ease;
+}
+
+.optional-section.collapsed .optional-section-body {
+  display: none;
 }
 
 /* Tracker Cards */
@@ -185,6 +251,7 @@
 .tracker-card-actions { display: flex; gap: 8px; align-items: center; }
 .tracker-card-actions .btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px; }
 .tracker-card-actions .btn-danger { flex: 0 0 auto; padding: 6px 10px; }
+.tracker-card-actions .swap-btn { flex: 0 0 auto; padding: 6px 10px; }
 
 .weight-mode-tag-row {
   display: flex;

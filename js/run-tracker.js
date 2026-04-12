@@ -68,7 +68,7 @@ function getRunTrackerTemplate() {
       <div class="stat-card accent-blue">
         <div class="stat-icon">🏅</div>
         <div class="stat-value" id="run-today-pr">--</div>
-        <div class="stat-label">Today's Best Pace</div>
+        <div class="stat-label">Recent Best Pace</div>
       </div>
       <div class="stat-card accent-green">
         <div class="stat-icon">🏆</div>
@@ -86,6 +86,8 @@ function getRunTrackerTemplate() {
         <div class="stat-label">Total Runs</div>
       </div>
     </div>
+
+    <div id="top-runs-podium" class="top-runs-podium" style="display:none;"></div>
 
     <div id="run-new-pr-banner" class="pr-banner" style="display:none;">
       🎉 New PR! You smashed your lifetime best pace!
@@ -175,6 +177,21 @@ function logRun() {
     totalPointsForRun += base;
   }
 
+  // Category PR check (distance brackets)
+  const catLow = distance < 5 ? 0 : Math.floor(distance / 5) * 5;
+  const catHigh = catLow + 5;
+  const catLabel = catLow === 0 ? 'Under 5K' : `${catLow}K`;
+  const catRuns = runs.filter(r => r.pace != null && parseFloat(r.pace) > 0 && r.distance >= catLow && r.distance < catHigh);
+  const catPaces = catRuns.map(r => parseFloat(r.pace)).sort((a, b) => a - b);
+  const catRank = catPaces.indexOf(parseFloat(run.pace)) + 1;
+
+  if (catRuns.length > 1 && catRank >= 1 && catRank <= 3) {
+    const catBonus = catRank === 1 ? Math.round(distance * 1.5) : catRank === 2 ? Math.round(distance) : Math.round(distance * 0.5);
+    addDisciplinePoints(catBonus, `${catLabel} category #${catRank} PR! (${pace.toFixed(2)} min/km)`);
+    totalPointsForRun += catBonus;
+  }
+
+  // Overall PR check
   if (lifetimeBestPace > 0 && runs.length > 1) {
     const allPaces = runs.map(r => parseFloat(r.pace)).filter(p => p > 0).sort((a, b) => a - b);
     const rank = allPaces.indexOf(parseFloat(run.pace)) + 1;
@@ -235,9 +252,13 @@ function loadRunStats() {
   const todayRuns = runs.filter(r => r.date === today && r.pace != null);
   const recordedRuns = runs.filter(r => r.pace != null);
 
+  // Recent best pace (last 7 days)
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const recentRuns = recordedRuns.filter(r => new Date(r.date) >= sevenDaysAgo);
   document.getElementById('run-today-pr').textContent =
-    todayRuns.length > 0
-      ? Math.min(...todayRuns.map(r => parseFloat(r.pace))).toFixed(2) + ' min/km'
+    recentRuns.length > 0
+      ? Math.min(...recentRuns.map(r => parseFloat(r.pace))).toFixed(2) + ' min/km'
       : '--';
 
   document.getElementById('run-lifetime-pr').textContent =
@@ -250,12 +271,69 @@ function loadRunStats() {
 
   document.getElementById('run-total-runs').textContent = runs.length;
 
+  // Top 3 runs podium by category
+  const podium = document.getElementById('top-runs-podium');
+  if (recordedRuns.length >= 1) {
+    const medals = ['🥇', '🥈', '🥉'];
+    const ranks = ['gold', 'silver', 'bronze'];
+
+    function buildPodiumSection(title, runsArr, collapsible) {
+      if (runsArr.length === 0) return '';
+      const top3 = [...runsArr].sort((a, b) => parseFloat(a.pace) - parseFloat(b.pace)).slice(0, 3);
+      const cards = `<div class="podium-cards">${top3.map((r, i) => `
+          <div class="podium-card podium-${ranks[i]}">
+            <span class="podium-medal">${medals[i]}</span>
+            <span class="podium-pace">${parseFloat(r.pace).toFixed(2)} <small>min/km</small></span>
+            <span class="podium-detail">${r.distance} km · ${r.time || '--'} min</span>
+            <span class="podium-date">${r.date}</span>
+          </div>`).join('')}
+        </div>`;
+      if (collapsible) {
+        return `<div class="podium-section podium-collapsible collapsed">
+          <h4 class="podium-category-title" onclick="this.parentElement.classList.toggle('collapsed')">
+            ${title}
+            <span class="podium-collapse-icon">▾</span>
+          </h4>
+          <div class="podium-collapse-body">${cards}</div>
+        </div>`;
+      }
+      return `<div class="podium-section">
+        <h4 class="podium-category-title">${title}</h4>
+        ${cards}
+      </div>`;
+    }
+
+    // Overall best
+    let html = buildPodiumSection('🏆 Overall Best Pace', recordedRuns, false);
+
+    // Under 5K category
+    const shortRuns = recordedRuns.filter(r => r.distance < 5);
+    if (shortRuns.length > 0) {
+      html += buildPodiumSection('🏃 Under 5K', shortRuns, true);
+    }
+
+    // By distance categories (multiples of 5K)
+    const maxDist = Math.max(...recordedRuns.map(r => r.distance));
+    for (let d = 5; d <= maxDist; d += 5) {
+      const catRuns = recordedRuns.filter(r => r.distance >= d && r.distance < d + 5);
+      if (catRuns.length > 0) {
+        html += buildPodiumSection(`🏅 ${d}K Category (${d}–${d + 4.9} km)`, catRuns, true);
+      }
+    }
+
+    podium.innerHTML = `<h3 class="podium-title">🏆 Personal Records</h3>` + html;
+    podium.style.display = 'block';
+  } else {
+    podium.style.display = 'none';
+  }
+
   // Calculate total run points from points log
   const pointsLog = DB.getPointsLog();
   const runPoints = pointsLog
     .filter(p => p.description && (
       p.description.startsWith('Running:') ||
       p.description.includes('PR pace') ||
+      p.description.includes('category') ||
       p.description.startsWith('First run') ||
       p.description.startsWith('Run deleted') ||
       p.description.startsWith('Run adjust') ||
@@ -434,7 +512,7 @@ function resetRunPoints() {
 
   const pointsLog = DB.getPointsLog();
   const runPoints = pointsLog
-    .filter(p => p.description && (p.description.startsWith('Running:') || p.description.includes('PR pace') || p.description.startsWith('First run') || p.description.startsWith('Run adjust') || p.description.startsWith('Run deleted') || p.description.startsWith('Run points reset')))
+    .filter(p => p.description && (p.description.startsWith('Running:') || p.description.includes('PR pace') || p.description.includes('category') || p.description.startsWith('First run') || p.description.startsWith('Run adjust') || p.description.startsWith('Run deleted') || p.description.startsWith('Run points reset')))
     .reduce((sum, p) => sum + (p.points || 0), 0);
 
   if (runPoints !== 0) {

@@ -285,6 +285,7 @@ function createWorkoutPlan() {
     plan.dayNames[i] = dayName || 'Day ' + i;
     plan.workouts[i] = [];
   }
+  plan.workouts['optional'] = [];
 
   plans.push(plan);
   DB.savePlans(plans);
@@ -309,7 +310,7 @@ function renderWorkoutPlans() {
     // Ensure dayNames exists for backward compatibility
     if (!plan.dayNames) plan.dayNames = {};
 
-    const dayGroups = Object.entries(plan.workouts).map(([day, workouts]) => {
+    const dayGroups = Object.entries(plan.workouts).filter(([day]) => day !== 'optional').map(([day, workouts]) => {
       const dayName = getPlanDayName(plan, day);
       const items = workouts.map(w => {
         let linkBadge = '';
@@ -340,6 +341,22 @@ function renderWorkoutPlans() {
         </div>`;
     }).join('');
 
+    // Optional workouts section
+    const optionalWorkouts = plan.workouts['optional'] || [];
+    const optionalHtml = optionalWorkouts.length > 0 ? `
+      <div class="plan-day-group optional-group">
+        <div class="plan-day-header">
+          <h4>⭐ Optional</h4>
+        </div>
+        ${optionalWorkouts.map(w => `
+          <div class="plan-workout-item optional-item">
+            <span class="workout-name">${escapeHtml(w.name)}</span>
+            <span class="workout-meta">${w.type} · ${w.muscle}${w.equipment ? ' · ' + w.equipment : ''}</span>
+            <button class="btn btn-xs btn-outline" onclick="openEditWorkoutModal('${plan.id}','optional','${w.id}')" title="Edit">✏️</button>
+            <button class="btn btn-xs btn-danger" onclick="removeWorkoutFromPlan('${plan.id}','optional','${w.id}')">✕</button>
+          </div>`).join('')}
+      </div>` : '';
+
     return `
       <div class="plan-card">
         <div class="plan-card-header">
@@ -348,6 +365,7 @@ function renderWorkoutPlans() {
         </div>
         <div class="plan-days-container">
           ${dayGroups}
+          ${optionalHtml}
         </div>
         <div class="plan-card-actions">
           <button class="btn btn-primary btn-sm" onclick="openAddWorkoutModal('${plan.id}')">+ Add Workout</button>
@@ -404,6 +422,7 @@ function openAddWorkoutModal(planId) {
     const dayName = getPlanDayName(plan, i);
     daySelect.innerHTML += `<option value="${i}">${escapeHtml(dayName)}</option>`;
   }
+  daySelect.innerHTML += `<option value="optional">⭐ Optional</option>`;
   document.getElementById('workout-name').value = '';
   document.getElementById('workout-type').value = 'strength';
   document.getElementById('workout-muscle').value = 'chest';
@@ -430,6 +449,7 @@ function openEditWorkoutModal(planId, day, workoutId) {
     const dayName = getPlanDayName(plan, i);
     daySelect.innerHTML += `<option value="${i}">${escapeHtml(dayName)}</option>`;
   }
+  daySelect.innerHTML += `<option value="optional">⭐ Optional</option>`;
   daySelect.value = day;
   document.getElementById('workout-name').value = w.name;
   document.getElementById('workout-type').value = w.type;
@@ -503,10 +523,11 @@ function addWorkoutToPlan() {
   const plan = plans.find(p => p.id === planId);
   if (!plan) return;
 
+  if (!plan.workouts[day]) plan.workouts[day] = [];
   plan.workouts[day].push({ id: uid(), name, type, muscle, equipment });
   DB.savePlans(plans);
 
-  const dayName = getPlanDayName(plan, day);
+  const dayName = day === 'optional' ? 'Optional' : getPlanDayName(plan, day);
   closeModal('add-workout-modal');
   showToast(`Added "${name}" to ${dayName}`, 'success');
   renderWorkoutPlans();

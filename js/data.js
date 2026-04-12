@@ -227,6 +227,7 @@ function detectMuscleGroup(name) {
 
 /* ---- Plan day name helper ---- */
 function getPlanDayName(plan, dayNum) {
+  if (dayNum === 'optional') return '⭐ Optional';
   if (plan.dayNames && plan.dayNames[dayNum]) {
     return plan.dayNames[dayNum];
   }
@@ -269,6 +270,7 @@ function updateDPDisplays() {
       .filter(p => p.description && (
         p.description.startsWith('Running:') ||
         p.description.includes('PR pace') ||
+        p.description.includes('category') ||
         p.description.startsWith('First run') ||
         p.description.startsWith('Run deleted') ||
         p.description.startsWith('Run adjust') ||

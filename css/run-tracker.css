@@ -14,6 +14,137 @@
   .run-stats-grid { grid-template-columns: 1fr; }
 }
 
+/* Top 3 Podium */
+.top-runs-podium {
+  margin-bottom: 24px;
+}
+
+.podium-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0 0 12px;
+  color: var(--text-primary);
+}
+
+.podium-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.podium-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 16px 12px;
+  border-radius: var(--radius-md);
+  border: 2px solid;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.podium-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+}
+
+.podium-gold {
+  border-color: #f59e0b;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(245, 158, 11, 0.04));
+}
+.podium-gold::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+
+.podium-silver {
+  border-color: #9ca3af;
+  background: linear-gradient(135deg, rgba(156, 163, 175, 0.12), rgba(156, 163, 175, 0.04));
+}
+.podium-silver::before { background: linear-gradient(90deg, #9ca3af, #d1d5db); }
+
+.podium-bronze {
+  border-color: #cd7f32;
+  background: linear-gradient(135deg, rgba(205, 127, 50, 0.12), rgba(205, 127, 50, 0.04));
+}
+.podium-bronze::before { background: linear-gradient(90deg, #cd7f32, #daa06d); }
+
+.podium-medal {
+  font-size: 1.8rem;
+}
+
+.podium-pace {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.podium-pace small {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.podium-detail {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.podium-date {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.podium-section {
+  margin-bottom: 16px;
+}
+
+.podium-category-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0 0 8px;
+  padding: 6px 12px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--accent-orange);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.podium-collapsible .podium-category-title {
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--transition);
+}
+
+.podium-collapsible .podium-category-title:hover {
+  background: var(--bg-secondary);
+}
+
+.podium-collapse-icon {
+  font-size: 1rem;
+  transition: transform var(--transition);
+  color: var(--text-muted);
+}
+
+.podium-collapsible.collapsed .podium-collapse-icon {
+  transform: rotate(-90deg);
+}
+
+.podium-collapse-body {
+  transition: max-height 0.3s ease;
+}
+
+.podium-collapsible.collapsed .podium-collapse-body {
+  display: none;
+}
+
 /* Run Points Banner */
 .run-points-banner {
   display: flex;

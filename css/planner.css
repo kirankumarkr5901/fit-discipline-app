@@ -84,6 +84,20 @@
   padding: 10px;
 }
 
+.plan-day-group.optional-group {
+  border: 2px dashed var(--accent-orange);
+  background: rgba(245, 158, 11, 0.04);
+}
+
+.optional-group .plan-day-header h4 {
+  color: var(--accent-orange);
+}
+
+.plan-workout-item.optional-item {
+  border-left: 3px solid var(--accent-orange);
+  opacity: 0.85;
+}
+
 .plan-day-header {
   display: flex;
   align-items: center;
