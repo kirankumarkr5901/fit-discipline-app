@@ -6,6 +6,8 @@ const DB = {
   _cache: {},
   _syncTimeout: null,
   _userId: null,
+  _loaded: false,       // true only after successful Firestore load
+  _loadedKeys: null,    // snapshot of keys loaded from Firestore (to detect empty-overwrite)
 
   _get(key, fallback) {
     if (!(key in this._cache)) {
@@ -19,6 +21,10 @@ const DB = {
   },
 
   _set(key, value) {
+    if (!this._loaded) {
+      console.warn('DB._set blocked – data not loaded yet');
+      return;
+    }
     this._cache[key] = value;
     this._scheduleSync();
   },
@@ -29,9 +35,21 @@ const DB = {
   },
 
   async _syncToFirestore() {
-    if (!this._userId) return;
+    if (!this._userId || !this._loaded) return;
+
+    // Safety: never overwrite remote data with an empty/near-empty cache
+    // If we originally loaded N keys but now have far fewer, something is wrong
+    const currentKeys = Object.keys(this._cache).length;
+    if (this._loadedKeys > 0 && currentKeys === 0) {
+      console.error('Sync BLOCKED – cache is empty but Firestore had data. Refusing to overwrite.');
+      return;
+    }
+
     try {
-      await firestore.collection('users').doc(this._userId).set(this._cache);
+      // Use merge to avoid wiping fields not in cache
+      await firestore.collection('users').doc(this._userId).set(this._cache, { merge: true });
+      // Also save a local backup after every successful sync
+      this._saveLocalBackup();
     } catch (err) {
       console.error('Firestore sync error:', err);
     }
@@ -39,12 +57,43 @@ const DB = {
 
   async loadFromFirestore(userId) {
     this._userId = userId;
+    this._loaded = false;
+    this._loadedKeys = null;
     try {
       const doc = await firestore.collection('users').doc(userId).get();
-      this._cache = doc.exists ? doc.data() : {};
+      if (doc.exists) {
+        this._cache = doc.data();
+        this._loadedKeys = Object.keys(this._cache).length;
+      } else {
+        // Brand new user – try restoring from local backup
+        const backup = this._getLocalBackup(userId);
+        if (backup && Object.keys(backup).length > 0) {
+          console.info('No Firestore doc found – restoring from local backup');
+          this._cache = backup;
+          this._loadedKeys = 0; // was empty remotely
+        } else {
+          this._cache = {};
+          this._loadedKeys = 0;
+        }
+      }
+      // Save a local backup every time we successfully load
+      this._loaded = true;
+      this._saveLocalBackup();
     } catch (err) {
       console.error('Firestore load error:', err);
-      this._cache = {};
+      // Load failed – try local backup so the app still works
+      const backup = this._getLocalBackup(userId);
+      if (backup && Object.keys(backup).length > 0) {
+        console.info('Firestore load failed – using local backup');
+        this._cache = backup;
+        this._loaded = true;
+        this._loadedKeys = Object.keys(backup).length;
+      } else {
+        // No backup available – keep cache empty but do NOT allow writes
+        this._cache = {};
+        this._loaded = false;
+        console.error('No local backup available. Writes are blocked until Firestore loads.');
+      }
     }
   },
 
@@ -52,6 +101,30 @@ const DB = {
     clearTimeout(this._syncTimeout);
     this._cache = {};
     this._userId = null;
+    this._loaded = false;
+    this._loadedKeys = null;
+  },
+
+  /* ---- Local backup (localStorage) ---- */
+  _saveLocalBackup() {
+    if (!this._userId) return;
+    try {
+      const data = JSON.stringify(this._cache);
+      localStorage.setItem('fd_backup_' + this._userId, data);
+      localStorage.setItem('fd_backup_time_' + this._userId, new Date().toISOString());
+    } catch (e) {
+      // localStorage might be full – not critical
+      console.warn('Local backup save failed:', e);
+    }
+  },
+
+  _getLocalBackup(userId) {
+    try {
+      const raw = localStorage.getItem('fd_backup_' + userId);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
   },
 
   getPlans()              { return this._get('plans', []); },
