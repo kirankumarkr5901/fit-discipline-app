@@ -29,7 +29,7 @@ function getRunTrackerTemplate() {
       </div>
       <div class="form-row inline" style="gap:8px">
         <button class="btn btn-primary" onclick="logRun()" style="flex:1">Log Run</button>
-        <button class="btn btn-outline btn-sm" onclick="logUnrecordedRun()" title="Log a past run without earning points">Log Unrecorded</button>
+        <button class="btn btn-outline btn-sm" onclick="logUnrecordedRun()" title="Log a past run (distance only, no points)">Log Unrecorded</button>
       </div>
     </div>
 
@@ -191,7 +191,8 @@ function getLifetimeBestPace() {
 function loadRunStats() {
   const runs = DB.getRunLogs();
   const today = todayStr();
-  const todayRuns = runs.filter(r => r.date === today);
+  const todayRuns = runs.filter(r => r.date === today && r.pace != null);
+  const recordedRuns = runs.filter(r => r.pace != null);
 
   document.getElementById('run-today-pr').textContent =
     todayRuns.length > 0
@@ -199,8 +200,8 @@ function loadRunStats() {
       : '--';
 
   document.getElementById('run-lifetime-pr').textContent =
-    runs.length > 0
-      ? Math.min(...runs.map(r => parseFloat(r.pace))).toFixed(2) + ' min/km'
+    recordedRuns.length > 0
+      ? Math.min(...recordedRuns.map(r => parseFloat(r.pace))).toFixed(2) + ' min/km'
       : '--';
 
   document.getElementById('run-total-distance').textContent =
@@ -208,9 +209,9 @@ function loadRunStats() {
 
   document.getElementById('run-total-runs').textContent = runs.length;
 
-  if (todayRuns.length > 0 && runs.length > 0) {
+  if (todayRuns.length > 0 && recordedRuns.length > 0) {
     const bestToday = Math.min(...todayRuns.map(r => parseFloat(r.pace)));
-    const bestEver = Math.min(...runs.map(r => parseFloat(r.pace)));
+    const bestEver = Math.min(...recordedRuns.map(r => parseFloat(r.pace)));
     document.getElementById('run-new-pr-banner').style.display =
       bestToday <= bestEver ? 'block' : 'none';
   } else {
@@ -231,8 +232,8 @@ function loadRunHistory() {
     <tr>
       <td>${formatDate(r.date)}</td>
       <td>${r.distance} km</td>
-      <td>${r.time} min</td>
-      <td>${r.pace} min/km</td>
+      <td>${r.time != null ? r.time + ' min' : '—'}</td>
+      <td>${r.pace != null ? r.pace + ' min/km' : '—'}</td>
       <td>
         <button class="btn btn-xs btn-outline" onclick="openEditRunModal('${r.id}')" title="Edit">✏️</button>
         <button class="btn btn-xs btn-danger" onclick="deleteRun('${r.id}')">✕</button>
@@ -324,7 +325,7 @@ function renderRunChart() {
   if (runs.length === 0) return;
 
   const labels = runs.map(r => formatDate(r.date));
-  const paceData = runs.map(r => parseFloat(r.pace));
+  const paceData = runs.map(r => r.pace != null ? parseFloat(r.pace) : null);
   const distData = runs.map(r => r.distance);
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
 
