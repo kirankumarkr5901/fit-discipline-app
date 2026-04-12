@@ -13,3 +13,44 @@
 @media (max-width: 480px) {
   .run-stats-grid { grid-template-columns: 1fr; }
 }
+
+/* Run Points Banner */
+.run-points-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  border-radius: var(--radius-md);
+  padding: 20px 24px;
+  margin-bottom: 32px;
+  box-shadow: var(--shadow-md);
+  color: #fff;
+}
+
+.run-points-banner-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.run-points-banner-value {
+  font-size: 1.8rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.run-points-banner-label {
+  font-size: 0.85rem;
+  opacity: 0.85;
+  font-weight: 600;
+}
+
+/* Run Points Badges */
+.run-points-base {
+  font-weight: 600;
+  color: var(--accent-blue);
+}
+
+.run-points-bonus {
+  font-weight: 700;
+  color: var(--accent-green);
+}

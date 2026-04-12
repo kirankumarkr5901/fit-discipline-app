@@ -8,6 +8,14 @@ function getRunTrackerTemplate() {
   return `
     <h1 class="page-title">🏃 Run Tracker</h1>
 
+    <div class="run-points-banner">
+      <div class="run-points-banner-icon">⚡</div>
+      <div class="run-points-banner-content">
+        <div class="run-points-banner-value" id="run-total-points">0</div>
+        <div class="run-points-banner-label">Total Run Points Earned</div>
+      </div>
+    </div>
+
     <div class="form-card">
       <h2>Log a Run</h2>
       <div class="form-row">
@@ -64,7 +72,7 @@ function getRunTrackerTemplate() {
     <div id="run-history-list" class="table-wrapper">
       <table class="data-table">
         <thead>
-          <tr><th>Date</th><th>Distance</th><th>Time</th><th>Pace</th><th>Actions</th></tr>
+          <tr><th>Date</th><th>Distance</th><th>Time</th><th>Pace</th><th>Points</th><th>Actions</th></tr>
         </thead>
         <tbody id="run-history-body"></tbody>
       </table>
@@ -209,6 +217,13 @@ function loadRunStats() {
 
   document.getElementById('run-total-runs').textContent = runs.length;
 
+  // Calculate total run points from points log
+  const pointsLog = DB.getPointsLog();
+  const runPoints = pointsLog
+    .filter(p => p.description && (p.description.startsWith('Running:') || p.description.includes('PR pace') || p.description.startsWith('First run')))
+    .reduce((sum, p) => sum + (p.points || 0), 0);
+  document.getElementById('run-total-points').textContent = runPoints;
+
   if (todayRuns.length > 0 && recordedRuns.length > 0) {
     const bestToday = Math.min(...todayRuns.map(r => parseFloat(r.pace)));
     const bestEver = Math.min(...recordedRuns.map(r => parseFloat(r.pace)));
@@ -224,21 +239,50 @@ function loadRunHistory() {
   const body = document.getElementById('run-history-body');
 
   if (runs.length === 0) {
-    body.innerHTML = '<tr><td colspan="5" class="empty-state">No runs logged yet</td></tr>';
+    body.innerHTML = '<tr><td colspan="6" class="empty-state">No runs logged yet</td></tr>';
     return;
   }
 
-  body.innerHTML = runs.map(r => `
+  // Pre-compute PR rankings for points display
+  const recordedRuns = runs.filter(r => r.pace != null);
+  const sortedPaces = recordedRuns.map(r => parseFloat(r.pace)).sort((a, b) => a - b);
+
+  body.innerHTML = runs.map(r => {
+    let points = '';
+    if (r.time != null && r.pace != null) {
+      const baseKm = Math.floor(r.distance);
+      let base = baseKm * 10;
+      let bonus = 0;
+      const pace = parseFloat(r.pace);
+      // Find rank using tolerance for float matching
+      const rank = sortedPaces.findIndex(p => Math.abs(p - pace) < 0.001) + 1;
+      if (recordedRuns.length <= 1) {
+        // First run always gets #1 PR bonus
+        bonus = Math.round(r.distance * 2);
+      } else if (rank === 1) {
+        bonus = Math.round(r.distance * 2);
+      } else if (rank === 2) {
+        bonus = Math.round(r.distance * 1.5);
+      } else if (rank === 3) {
+        bonus = Math.round(r.distance);
+      }
+      points = bonus > 0
+        ? `<span class="run-points-base">${base}</span> + <span class="run-points-bonus">${bonus}</span>`
+        : `<span class="run-points-base">${base}</span>`;
+    }
+    return `
     <tr>
       <td>${formatDate(r.date)}</td>
       <td>${r.distance} km</td>
       <td>${r.time != null ? r.time + ' min' : '—'}</td>
       <td>${r.pace != null ? r.pace + ' min/km' : '—'}</td>
+      <td>${points || '—'}</td>
       <td>
         <button class="btn btn-xs btn-outline" onclick="openEditRunModal('${r.id}')" title="Edit">✏️</button>
         <button class="btn btn-xs btn-danger" onclick="deleteRun('${r.id}')">✕</button>
       </td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 }
 
 function deleteRun(runId) {
@@ -255,16 +299,19 @@ function deleteRun(runId) {
 function logUnrecordedRun() {
   const date = document.getElementById('run-date').value;
   const distance = parseFloat(document.getElementById('run-distance').value);
-  const time = parseFloat(document.getElementById('run-time').value);
+  const timeVal = document.getElementById('run-time').value;
+  const time = timeVal ? parseFloat(timeVal) : null;
 
   if (!date) { showToast('Select a date', 'warning'); return; }
   if (!distance || distance <= 0) { showToast('Enter a valid distance', 'warning'); return; }
-  if (!time || time <= 0) { showToast('Enter a valid time', 'warning'); return; }
 
-  const pace = time / distance;
   const runs = DB.getRunLogs();
 
-  const run = { id: uid(), date, distance, time, pace: pace.toFixed(2) };
+  const run = { id: uid(), date, distance };
+  if (time && time > 0) {
+    run.time = time;
+    run.pace = (time / distance).toFixed(2);
+  }
   runs.push(run);
   runs.sort((a, b) => b.date.localeCompare(a.date));
   DB.saveRunLogs(runs);

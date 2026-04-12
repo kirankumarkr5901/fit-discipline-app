@@ -37,18 +37,17 @@ const DB = {
   async _syncToFirestore() {
     if (!this._userId || !this._loaded) return;
 
-    // Safety: never overwrite remote data with an empty/near-empty cache
-    // If we originally loaded N keys but now have far fewer, something is wrong
+    // Safety: never sync if cache has fewer keys than what was loaded
     const currentKeys = Object.keys(this._cache).length;
-    if (this._loadedKeys > 0 && currentKeys === 0) {
-      console.error('Sync BLOCKED – cache is empty but Firestore had data. Refusing to overwrite.');
+    if (this._loadedKeys > 0 && currentKeys < this._loadedKeys) {
+      console.error('Sync BLOCKED – cache has fewer keys than loaded (' + currentKeys + ' vs ' + this._loadedKeys + '). Refusing to overwrite.');
       return;
     }
 
     try {
-      // Use merge to avoid wiping fields not in cache
+      // merge:true ensures we only add/update fields, never delete them
       await firestore.collection('users').doc(this._userId).set(this._cache, { merge: true });
-      // Also save a local backup after every successful sync
+      this._loadedKeys = currentKeys;
       this._saveLocalBackup();
     } catch (err) {
       console.error('Firestore sync error:', err);
@@ -151,8 +150,12 @@ const DB = {
   saveActivity(a)         { this._set('activity', a); },
   getPenaltiesChecked()   { return this._get('penaltiesChecked', {}); },
   savePenaltiesChecked(p) { this._set('penaltiesChecked', p); },
-  getPenaltiesMissed()    { return this._get('penaltiesMissed', {}); },
-  savePenaltiesMissed(m)  { this._set('penaltiesMissed', m); },
+  getPenaltiesMissed()        { return this._get('penaltiesMissed', {}); },
+  savePenaltiesMissed(m)      { this._set('penaltiesMissed', m); },
+  getDailyDedicationPoints()  { return this._get('dailyDedicationPoints', 10); },
+  saveDailyDedicationPoints(v){ this._set('dailyDedicationPoints', v); },
+  getBodyMetrics()         { return this._get('bodyMetrics', []); },
+  saveBodyMetrics(b)       { this._set('bodyMetrics', b); },
   /* Dark mode stays in localStorage – it's a device preference */
   isDarkMode() {
     try { return JSON.parse(localStorage.getItem('fd_darkMode')) || false; }
@@ -256,6 +259,16 @@ function updateDPDisplays() {
   const dp = DB.getDP();
   document.querySelectorAll('#home-total-dp, #habits-total-dp, #rewards-total-dp')
     .forEach(el => { if (el) el.textContent = dp; });
+
+  // Update run points display if visible
+  const runPointsEl = document.getElementById('run-total-points');
+  if (runPointsEl) {
+    const pointsLog = DB.getPointsLog();
+    const runPoints = pointsLog
+      .filter(p => p.description && (p.description.startsWith('Running:') || p.description.includes('PR pace') || p.description.startsWith('First run')))
+      .reduce((sum, p) => sum + (p.points || 0), 0);
+    runPointsEl.textContent = runPoints;
+  }
 }
 
 /* ---- Streak Calculation ---- */

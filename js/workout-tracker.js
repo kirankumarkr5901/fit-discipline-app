@@ -26,7 +26,7 @@ function getWorkoutTrackerTemplate() {
     <div id="day-tabs" class="day-tabs"></div>
 
     <!-- Muscle Group Filter -->
-    <div id="muscle-group-filters" class="filter-chips"></div>
+    <div id="muscle-group-filters" class="day-tabs"></div>
 
     <div id="workout-tracker-cards" class="tracker-cards"></div>
 
@@ -121,11 +121,23 @@ function loadWorkoutTracker() {
   // Build muscle group filters
   const muscles = [...new Set(allWorkouts.map(w => w.muscle))];
   const filterContainer = document.getElementById('muscle-group-filters');
-  filterContainer.innerHTML =
-    `<span class="chip ${activeMuscleFilter === 'all' ? 'active' : ''}" onclick="setMuscleFilter('all')">All</span>` +
-    muscles.map(m =>
-      `<span class="chip ${activeMuscleFilter === m ? 'active' : ''}" onclick="setMuscleFilter('${m}')">${m.charAt(0).toUpperCase() + m.slice(1)}</span>`
-    ).join('');
+  if (muscles.length > 1) {
+    const totalCount = allWorkouts.length;
+    filterContainer.innerHTML =
+      `<div class="day-tab ${activeMuscleFilter === 'all' ? 'active' : ''}" onclick="setMuscleFilter('all')">
+        <span>All</span>
+        <span class="day-tab-count">${totalCount}</span>
+      </div>` +
+      muscles.map(m => {
+        const count = allWorkouts.filter(w => w.muscle === m).length;
+        return `<div class="day-tab ${activeMuscleFilter === m ? 'active' : ''}" onclick="setMuscleFilter('${m}')">
+          <span>${m.charAt(0).toUpperCase() + m.slice(1)}</span>
+          <span class="day-tab-count">${count}</span>
+        </div>`;
+      }).join('');
+  } else {
+    filterContainer.innerHTML = '';
+  }
 
   // Filter by muscle
   const filtered = activeMuscleFilter === 'all'
@@ -142,20 +154,41 @@ function loadWorkoutTracker() {
     return;
   }
 
-  // Group supersets and alternatives, render singles normally
-  const rendered = new Set();
-  let html = '';
+  // Render workouts grouped by day when viewing all, or flat for a single day
+  // Within each group: singles first, then supersets/alternatives at the end
+  if (activeDay === 'all' && daysToShow.length > 1) {
+    let fullHtml = '';
+    for (const day of daysToShow) {
+      const dayWorkouts = filtered.filter(w => w.day === day);
+      if (dayWorkouts.length === 0) continue;
+      const dayName = getPlanDayName(plan, day);
+      const dayContent = renderWorkoutGroup(dayWorkouts, planId, date, dayLogs, plan);
+      fullHtml += `<div class="day-section">
+        <h3 class="day-section-title">${escapeHtml(dayName)}</h3>
+        ${dayContent}
+      </div>`;
+    }
+    container.innerHTML = fullHtml;
+  } else {
+    container.innerHTML = renderWorkoutGroup(filtered, planId, date, dayLogs, plan);
+  }
+}
 
-  for (const w of filtered) {
+function renderWorkoutGroup(workouts, planId, date, dayLogs, plan) {
+  const rendered = new Set();
+  let singlesHtml = '';
+  let groupsHtml = '';
+
+  for (const w of workouts) {
     if (rendered.has(w.id)) continue;
     rendered.add(w.id);
 
     // Superset pair
     if (w.supersetWith) {
-      const partner = filtered.find(x => x.id === w.supersetWith);
+      const partner = workouts.find(x => x.id === w.supersetWith);
       if (partner && !rendered.has(partner.id)) {
         rendered.add(partner.id);
-        html += `<div class="superset-group">
+        groupsHtml += `<div class="superset-group">
           <div class="group-label superset-label">🔗 SUPERSET</div>
           <div class="group-cards">
             ${buildTrackerCard(w, planId, date, dayLogs, plan)}
@@ -168,14 +201,14 @@ function loadWorkoutTracker() {
 
     // Alternative pair
     if (w.alternativeOf) {
-      const partner = filtered.find(x => x.id === w.alternativeOf);
+      const partner = workouts.find(x => x.id === w.alternativeOf);
       if (partner && !rendered.has(partner.id)) {
         rendered.add(partner.id);
         const logA = dayLogs[w.id];
         const logB = dayLogs[partner.id];
         const dimA = !logA && logB ? ' alt-dimmed' : '';
         const dimB = !logB && logA ? ' alt-dimmed' : '';
-        html += `<div class="alternative-group">
+        groupsHtml += `<div class="alternative-group">
           <div class="group-label alternative-label">🔀 ALTERNATIVE — pick one</div>
           <div class="group-cards">
             ${buildTrackerCard(w, planId, date, dayLogs, plan, dimA)}
@@ -188,10 +221,10 @@ function loadWorkoutTracker() {
     }
 
     // Normal card
-    html += buildTrackerCard(w, planId, date, dayLogs, plan);
+    singlesHtml += buildTrackerCard(w, planId, date, dayLogs, plan);
   }
 
-  container.innerHTML = html;
+  return singlesHtml + groupsHtml;
 }
 
 /* ---- Build Single Tracker Card ---- */
@@ -204,8 +237,13 @@ function buildTrackerCard(w, planId, date, dayLogs, plan, extraClass) {
   let logSummary = '';
   if (log) {
     if (w.type === 'strength') {
-      const modeLabel = log.weightMode === 'perside' ? ' (per side)' : w.equipment === 'dumbbell' ? ' (per hand)' : '';
-      logSummary = `${log.weight}kg${modeLabel} × ${log.reps} reps × ${log.sets} sets`;
+      if (w.equipment === 'bodyweight' && log.bodyweight != null) {
+        const addedLabel = log.addedWeight > 0 ? ` + ${log.addedWeight}kg` : '';
+        logSummary = `${log.bodyweight}kg BW${addedLabel} = ${log.weight}kg × ${log.reps} reps × ${log.sets} sets`;
+      } else {
+        const modeLabel = log.weightMode === 'perside' ? ' (per side)' : w.equipment === 'dumbbell' ? ' (per hand)' : '';
+        logSummary = `${log.weight}kg${modeLabel} × ${log.reps} reps × ${log.sets} sets`;
+      }
     } else {
       logSummary = `${log.time} min × ${log.sets} sets`;
     }
@@ -309,6 +347,16 @@ function formatPR(type, log) {
   return `${log.time} min × ${log.sets} sets`;
 }
 
+function updateBWTotal() {
+  const bw = parseFloat(document.getElementById('log-bodyweight').value) || 0;
+  const added = parseFloat(document.getElementById('log-added-weight').value) || 0;
+  const preview = document.getElementById('bw-total-preview');
+  if (preview) {
+    const total = bw + added;
+    preview.textContent = total > 0 ? total + ' kg' : '--';
+  }
+}
+
 /* ---- Log Workout Modal ---- */
 function openLogWorkout(planId, workoutId, workoutType, equipment) {
   const date = document.getElementById('workout-tracker-date').value;
@@ -329,13 +377,41 @@ function openLogWorkout(planId, workoutId, workoutType, equipment) {
   }
   document.getElementById('log-workout-title').textContent = `Log: ${wName}`;
 
+  // Get user's bodyweight for bodyweight exercises
+  const isBodyweight = equipment === 'bodyweight';
+  let userBodyweight = 0;
+  if (isBodyweight) {
+    const metrics = DB.getBodyMetrics();
+    if (metrics.length > 0) userBodyweight = metrics[0].weight;
+  }
+
   const fields = document.getElementById('log-workout-fields');
   if (workoutType === 'strength') {
-    fields.innerHTML = `
-      <div class="form-row">
-        <label>Weight (kg)</label>
-        <input type="number" id="log-weight" step="0.5" value="${existing ? existing.weight : ''}" placeholder="e.g., 80" />
-      </div>
+    let weightFieldHtml;
+    if (isBodyweight) {
+      const addedWeight = existing ? (existing.addedWeight != null ? existing.addedWeight : 0) : 0;
+      const totalPreview = userBodyweight > 0 ? userBodyweight + addedWeight : '';
+      weightFieldHtml = `
+        <div class="form-row">
+          <label>⚖️ Your Bodyweight</label>
+          <input type="number" id="log-bodyweight" value="${userBodyweight || ''}" step="0.1" placeholder="Enter bodyweight" oninput="updateBWTotal()" />
+        </div>
+        <div class="form-row">
+          <label>Added Weight (kg) <span style="font-size:0.8em;color:var(--text-muted)">vest, plate, etc.</span></label>
+          <input type="number" id="log-added-weight" step="0.5" value="${addedWeight}" placeholder="0" oninput="updateBWTotal()" />
+        </div>
+        <div class="form-row">
+          <label>Total Weight</label>
+          <div id="bw-total-preview" style="padding:10px 12px;background:var(--bg-tertiary);border-radius:var(--radius-sm);font-weight:700;color:var(--accent-blue);font-size:1.1rem">${totalPreview ? totalPreview + ' kg' : '--'}</div>
+        </div>`;
+    } else {
+      weightFieldHtml = `
+        <div class="form-row">
+          <label>Weight (kg)</label>
+          <input type="number" id="log-weight" step="0.5" value="${existing ? existing.weight : ''}" placeholder="e.g., 80" />
+        </div>`;
+    }
+    fields.innerHTML = weightFieldHtml + `
       <div class="form-row">
         <label>Reps</label>
         <input type="number" id="log-reps" value="${existing ? existing.reps : ''}" placeholder="e.g., 10" />
@@ -384,13 +460,31 @@ function saveWorkoutLog() {
     }
   }
 
+  // Find equipment type
+  let wEquipment = 'barbell';
+  if (plan) {
+    for (const day of Object.values(plan.workouts)) {
+      const found = day.find(w => w.id === workoutId);
+      if (found) { wEquipment = found.equipment || 'barbell'; break; }
+    }
+  }
+
   let logData;
   if (wType === 'strength') {
-    const weight = document.getElementById('log-weight').value;
     const reps = document.getElementById('log-reps').value;
     const sets = document.getElementById('log-sets').value;
-    if (!weight || !reps || !sets) { showToast('Fill all fields', 'warning'); return; }
-    logData = { weight: parseFloat(weight), reps: parseInt(reps), sets: parseInt(sets), type: 'strength' };
+
+    if (wEquipment === 'bodyweight') {
+      const bw = parseFloat(document.getElementById('log-bodyweight').value);
+      const added = parseFloat(document.getElementById('log-added-weight').value) || 0;
+      if (!bw || !reps || !sets) { showToast('Fill all fields', 'warning'); return; }
+      const totalWeight = bw + added;
+      logData = { weight: totalWeight, bodyweight: bw, addedWeight: added, reps: parseInt(reps), sets: parseInt(sets), type: 'strength' };
+    } else {
+      const weight = document.getElementById('log-weight').value;
+      if (!weight || !reps || !sets) { showToast('Fill all fields', 'warning'); return; }
+      logData = { weight: parseFloat(weight), reps: parseInt(reps), sets: parseInt(sets), type: 'strength' };
+    }
     const wmEl = document.getElementById('log-weight-mode');
     if (wmEl) logData.weightMode = wmEl.value;
   } else {

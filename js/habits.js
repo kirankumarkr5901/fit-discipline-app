@@ -119,15 +119,28 @@ function loadHabitsDaily() {
     return;
   }
 
-  container.innerHTML = habits.map(h => {
+  const isPastDate = date < todayStr();
+  const isFutureDate = date > todayStr();
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.getFullYear() + '-' + String(yesterday.getMonth() + 1).padStart(2, '0') + '-' + String(yesterday.getDate()).padStart(2, '0');
+  const isLocked = date < yesterdayStr || isFutureDate;
+
+  container.innerHTML = habits.map((h, idx) => {
     const done = !!dayCompletions[h.id];
+    const missed = !done && isPastDate;
     const streak = getHabitStreak(h.id);
+    const itemClass = done ? 'completed' : missed ? 'missed' : '';
+    const lockedClass = isLocked ? ' locked' : '';
+    const clickHandler = isLocked ? '' : `onclick="toggleHabit('${h.id}')"`;
     return `
-      <div class="habit-item ${done ? 'completed' : ''}" onclick="toggleHabit('${h.id}')">
-        <div class="habit-checkbox">${done ? '✓' : ''}</div>
-        <div class="habit-info">
+      <div class="habit-item ${itemClass}${lockedClass}" draggable="${!isLocked}" data-habit-idx="${idx}"
+           ${!isLocked ? `ondragstart="onHabitDragStart(event, ${idx})" ondragover="onHabitDragOver(event)" ondrop="onHabitDrop(event, ${idx})" ondragend="onHabitDragEnd(event)"` : ''}>
+        ${!isLocked ? '<div class="habit-drag-handle" onclick="event.stopPropagation()" title="Drag to reorder">⠿</div>' : '<div class="habit-lock-icon">🔒</div>'}
+        <div class="habit-checkbox" ${clickHandler}>${done ? '✓' : missed ? '✗' : ''}</div>
+        <div class="habit-info" ${clickHandler}>
           <div class="habit-title">${escapeHtml(h.name)}</div>
-          <div class="habit-meta">${streak > 0 ? '🔥 ' + streak + ' day streak' : 'No streak'}</div>
+          <div class="habit-meta">${isLocked && isFutureDate ? '🔒 Future date' : isLocked && missed ? '🔒 Locked' : missed ? '❌ Missed' : streak > 0 ? '🔥 ' + streak + ' day streak' : 'No streak'}</div>
         </div>
         <span class="habit-points-badge">+${h.points}</span>
         ${h.strict ? '<span class="habit-strict-badge">STRICT</span>' : ''}
@@ -140,6 +153,16 @@ function loadHabitsDaily() {
 
 function toggleHabit(habitId) {
   const date = document.getElementById('habits-date').value;
+
+  // Only allow toggling for today and yesterday
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.getFullYear() + '-' + String(yesterday.getMonth() + 1).padStart(2, '0') + '-' + String(yesterday.getDate()).padStart(2, '0');
+  if (date < yesterdayStr || date > todayStr()) {
+    showToast('Cannot change habits for this date', 'warning');
+    return;
+  }
+
   const completions = DB.getHabitCompletions();
   if (!completions[date]) completions[date] = {};
 
@@ -153,7 +176,7 @@ function toggleHabit(habitId) {
     delete completions[date][habitId];
     addDisciplinePoints(-habit.points, `Unchecked: ${habit.name}`);
     if (wasAllDone && habits.length > 1) {
-      const dedBonus = Math.max(...habits.map(h => h.dedicationPoints != null ? h.dedicationPoints : 10));
+      const dedBonus = DB.getDailyDedicationPoints();
       addDisciplinePoints(-dedBonus, 'Dedication bonus revoked');
       showToast(`Dedication bonus revoked (−${dedBonus} pts)`, 'warning');
     }
@@ -182,7 +205,7 @@ function toggleHabit(habitId) {
 
     const allDone = habits.every(h => completions[date][h.id]);
     if (allDone && habits.length > 0) {
-      const dedBonus = Math.max(...habits.map(h => h.dedicationPoints != null ? h.dedicationPoints : 10));
+      const dedBonus = DB.getDailyDedicationPoints();
       addDisciplinePoints(dedBonus, 'Dedication bonus: all habits completed!');
       showToast(`💪 Dedication bonus! All habits completed! +${dedBonus} pts`, 'success');
     }
@@ -222,7 +245,7 @@ function renderBonuses(date, habits, dayCompletions) {
 
   const allDone = habits.length > 0 && habits.every(h => dayCompletions[h.id]);
   if (allDone) {
-    const dedBonus = Math.max(...habits.map(h => h.dedicationPoints != null ? h.dedicationPoints : 10));
+    const dedBonus = DB.getDailyDedicationPoints();
     bonuses.push(`<div class="bonus-badge">🏆 Dedication Bonus! All habits completed today (+${dedBonus} pts)</div>`);
   }
 
@@ -237,6 +260,42 @@ function renderBonuses(date, habits, dayCompletions) {
   }
 
   container.innerHTML = bonuses.join('');
+}
+
+/* ---- Habit Drag & Drop Reorder ---- */
+let habitDragIdx = null;
+
+function onHabitDragStart(e, idx) {
+  habitDragIdx = idx;
+  e.dataTransfer.effectAllowed = 'move';
+  e.currentTarget.classList.add('dragging');
+}
+
+function onHabitDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const target = e.currentTarget;
+  target.classList.add('drag-over');
+}
+
+function onHabitDrop(e, dropIdx) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if (habitDragIdx === null || habitDragIdx === dropIdx) return;
+
+  const habits = DB.getHabits();
+  const [moved] = habits.splice(habitDragIdx, 1);
+  habits.splice(dropIdx, 0, moved);
+  DB.saveHabits(habits);
+
+  habitDragIdx = null;
+  loadHabitsDaily();
+}
+
+function onHabitDragEnd(e) {
+  habitDragIdx = null;
+  e.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('.habit-item').forEach(el => el.classList.remove('drag-over'));
 }
 
 /* ---- Strict Habit Penalties ---- */

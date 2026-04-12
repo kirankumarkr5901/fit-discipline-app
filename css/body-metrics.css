@@ -1,0 +1,158 @@
+/* ==================== BODY METRICS PAGE ==================== */
+.body-metrics-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.body-metrics-form {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 32px;
+}
+
+.body-metrics-form h2 {
+  margin: 0 0 16px;
+  font-size: 1.15rem;
+  color: var(--text-primary);
+}
+
+.body-metrics-form-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.body-metrics-form-row .form-group {
+  flex: 1;
+  min-width: 120px;
+}
+
+.body-metrics-form-row .form-group label {
+  display: block;
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.body-metrics-form-row .form-group input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 0.95rem;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  box-sizing: border-box;
+}
+
+.body-metrics-form-row .form-group input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.body-metrics-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.body-metrics-chart-card {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+.body-metrics-chart-card h3 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.body-metrics-history {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+}
+
+.body-metrics-history h2 {
+  margin: 0 0 16px;
+  font-size: 1.15rem;
+  color: var(--text-primary);
+}
+
+.body-metrics-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.body-metrics-table th,
+.body-metrics-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.9rem;
+}
+
+.body-metrics-table th {
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.body-metrics-table td {
+  color: var(--text-primary);
+}
+
+.body-metrics-table tr:last-child td {
+  border-bottom: none;
+}
+
+.bmi-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.bmi-underweight { background: var(--accent-blue-light, #dbeafe); color: var(--accent-blue); }
+.bmi-normal { background: var(--accent-green-light, #d1fae5); color: var(--accent-green); }
+.bmi-overweight { background: var(--accent-orange-light, #fef3c7); color: var(--accent-orange); }
+.bmi-obese { background: var(--accent-red-light, #fee2e2); color: var(--accent-red); }
+
+.metric-change {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.metric-change.positive { color: var(--accent-red); }
+.metric-change.negative { color: var(--accent-green); }
+.metric-change.neutral { color: var(--text-muted); }
+
+.metric-change-up { color: var(--accent-green); }
+.metric-change-down { color: var(--accent-red); }
+
+@media (max-width: 768px) {
+  .body-metrics-stats { grid-template-columns: repeat(2, 1fr); }
+  .body-metrics-charts { grid-template-columns: 1fr; }
+  .body-metrics-form-row { flex-direction: column; }
+}
+
+@media (max-width: 480px) {
+  .body-metrics-stats { grid-template-columns: 1fr; }
+  .body-metrics-table { font-size: 0.82rem; }
+  .body-metrics-table th,
+  .body-metrics-table td { padding: 8px 6px; }
+}

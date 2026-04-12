@@ -54,6 +54,11 @@ function getHomeTemplate() {
         <h3>Rewards</h3>
         <p>Claim rewards with discipline points</p>
       </div>
+      <div class="shortcut-card" onclick="navigateTo('body-metrics')">
+        <div class="shortcut-icon">📏</div>
+        <h3>Body Metrics</h3>
+        <p>Track weight, height & BMI over time</p>
+      </div>
     </div>
 
     <div class="home-recent">

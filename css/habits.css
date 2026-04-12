@@ -88,6 +88,46 @@
 
 .habit-item:hover { box-shadow: var(--shadow-sm); }
 .habit-item.completed { border-color: var(--accent-green); background: var(--accent-green-light); }
+.habit-item.missed { border-color: var(--accent-red); background: var(--accent-red-light); }
+
+.habit-item.missed .habit-checkbox {
+  background: var(--accent-red);
+  border-color: var(--accent-red);
+  color: #fff;
+}
+
+.habit-item.locked {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.habit-lock-icon {
+  font-size: 1rem;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.habit-drag-handle {
+  font-size: 1.2rem;
+  color: var(--text-muted);
+  cursor: grab;
+  user-select: none;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.habit-drag-handle:active { cursor: grabbing; }
+
+.habit-item.dragging {
+  opacity: 0.4;
+  border-style: dashed;
+}
+
+.habit-item.drag-over {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
 
 .habit-checkbox {
   width: 24px;

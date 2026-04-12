@@ -46,6 +46,7 @@ function buildPages() {
     { id: 'run-tracker',     template: getRunTrackerTemplate },
     { id: 'habits',          template: getHabitsTemplate },
     { id: 'rewards',         template: getRewardsTemplate },
+    { id: 'body-metrics',    template: getBodyMetricsTemplate },
   ];
 
   container.innerHTML = pages.map(p =>
@@ -67,7 +68,8 @@ function navigateTo(page) {
     'workout-tracker': '💪 Workout Tracker',
     'run-tracker': '🏃 Run Tracker',
     'habits': '✅ Habits & Discipline',
-    'rewards': '🏆 Rewards'
+    'rewards': '🏆 Rewards',
+    'body-metrics': '📏 Body Metrics'
   };
   document.title = (pageTitles[page] || 'Fit‑Discipline') + ' | Fit‑Discipline';
 
@@ -78,6 +80,7 @@ function navigateTo(page) {
     case 'run-tracker':     initRunTracker(); break;
     case 'habits':          initHabits(); break;
     case 'rewards':         initRewards(); break;
+    case 'body-metrics':    initBodyMetrics(); break;
   }
 }
 

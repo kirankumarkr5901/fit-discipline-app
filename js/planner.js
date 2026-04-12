@@ -148,6 +148,11 @@ function getPlannerTemplate() {
 
     <!-- Habits Tab -->
     <div id="planner-habits-tab" class="tab-content">
+      <div class="dedication-setting">
+        <label>🏆 Daily Dedication Bonus <span class="hint">(all habits done)</span></label>
+        <input type="number" id="daily-dedication-points" value="10" min="0" onchange="saveDailyDedicationPoints()" />
+        <span class="hint">pts</span>
+      </div>
       <div class="form-card">
         <h2>Create Habit</h2>
         <div class="form-row">
@@ -171,10 +176,6 @@ function getPlannerTemplate() {
         <div class="form-row">
           <label>Consistency Bonus <span class="hint">(every 7-day streak)</span></label>
           <input type="number" id="habit-consistency-points" value="5" min="0" />
-        </div>
-        <div class="form-row">
-          <label>Dedication Bonus <span class="hint">(all habits done in a day)</span></label>
-          <input type="number" id="habit-dedication-points" value="10" min="0" />
         </div>
         <button class="btn btn-primary" onclick="createHabit()">Add Habit</button>
       </div>
@@ -209,10 +210,6 @@ function getPlannerTemplate() {
             <label>Consistency Bonus</label>
             <input type="number" id="edit-habit-consistency-points" min="0" />
           </div>
-          <div class="form-row">
-            <label>Dedication Bonus</label>
-            <input type="number" id="edit-habit-dedication-points" min="0" />
-          </div>
           <input type="hidden" id="edit-habit-id" />
           <button class="btn btn-primary" onclick="saveEditHabit()">Save</button>
         </div>
@@ -232,6 +229,15 @@ function refreshPlanner() {
   setupDayNamesPreview();
   renderWorkoutPlans();
   renderHabitsList();
+  // Load daily dedication points setting
+  const dedInput = document.getElementById('daily-dedication-points');
+  if (dedInput) dedInput.value = DB.getDailyDedicationPoints();
+}
+
+function saveDailyDedicationPoints() {
+  const val = parseInt(document.getElementById('daily-dedication-points').value) || 10;
+  DB.saveDailyDedicationPoints(val);
+  showToast(`Daily dedication bonus set to ${val} pts`, 'success');
 }
 
 /* ---- Day Names Preview on Create ---- */
@@ -600,6 +606,7 @@ function renderCurrentLinks(plan, day) {
     <div class="link-item">
       <span class="link-badge ${l.type}">${l.type === 'superset' ? '🔗' : '🔀'} ${l.type}</span>
       <span>${escapeHtml(l.a.name)} ↔ ${escapeHtml(l.b.name)}</span>
+      <button class="btn btn-xs btn-outline" onclick="editLink('${plan.id}','${day}','${l.a.id}','${l.b.id}','${l.type}')" title="Change link type">✏️</button>
       <button class="btn btn-xs btn-danger" onclick="unlinkWorkouts('${plan.id}','${day}','${l.a.id}','${l.b.id}')">✕</button>
     </div>`).join('');
 }
@@ -657,6 +664,15 @@ function unlinkWorkouts(planId, day, aId, bId) {
   renderWorkoutPlans();
 }
 
+function editLink(planId, day, aId, bId, currentType) {
+  // Pre-fill the link form with existing values
+  document.getElementById('link-day-select').value = day;
+  populateLinkSelects();
+  document.getElementById('link-type').value = currentType === 'superset' ? 'alternative' : 'superset';
+  document.getElementById('link-workout-a').value = aId;
+  document.getElementById('link-workout-b').value = bId;
+}
+
 /* ====================
    HABIT MANAGEMENT
    ==================== */
@@ -671,12 +687,11 @@ function createHabit() {
   const strict = document.getElementById('habit-strict').checked;
   const penaltyPoints = strict ? (parseInt(document.getElementById('habit-penalty-points').value) || 5) : 0;
   const consistencyPoints = parseInt(document.getElementById('habit-consistency-points').value) || 5;
-  const dedicationPoints = parseInt(document.getElementById('habit-dedication-points').value) || 10;
 
   if (!name) { showToast('Enter a habit name', 'warning'); return; }
 
   const habits = DB.getHabits();
-  habits.push({ id: uid(), name, points, strict, penaltyPoints, consistencyPoints, dedicationPoints });
+  habits.push({ id: uid(), name, points, strict, penaltyPoints, consistencyPoints });
   DB.saveHabits(habits);
 
   document.getElementById('habit-name').value = '';
@@ -685,7 +700,6 @@ function createHabit() {
   document.getElementById('strict-penalty-row').style.display = 'none';
   document.getElementById('habit-penalty-points').value = '5';
   document.getElementById('habit-consistency-points').value = '5';
-  document.getElementById('habit-dedication-points').value = '10';
 
   addActivity('habit', `Created habit "${name}"`);
   showToast('Habit created!', 'success');
@@ -744,7 +758,6 @@ function openEditHabitModal(habitId) {
   document.getElementById('edit-habit-penalty-points').value = h.penaltyPoints || h.points;
   document.getElementById('edit-strict-penalty-row').style.display = h.strict ? 'block' : 'none';
   document.getElementById('edit-habit-consistency-points').value = h.consistencyPoints != null ? h.consistencyPoints : 5;
-  document.getElementById('edit-habit-dedication-points').value = h.dedicationPoints != null ? h.dedicationPoints : 10;
   openModal('edit-habit-modal');
 }
 
@@ -760,7 +773,6 @@ function saveEditHabit() {
   const strict = document.getElementById('edit-habit-strict').checked;
   const penaltyPoints = strict ? (parseInt(document.getElementById('edit-habit-penalty-points').value) || 5) : 0;
   const consistencyPoints = parseInt(document.getElementById('edit-habit-consistency-points').value) || 5;
-  const dedicationPoints = parseInt(document.getElementById('edit-habit-dedication-points').value) || 10;
 
   if (!name) { showToast('Enter a habit name', 'warning'); return; }
 
@@ -768,7 +780,7 @@ function saveEditHabit() {
   const h = habits.find(x => x.id === id);
   if (!h) return;
   h.name = name; h.points = points; h.strict = strict;
-  h.penaltyPoints = penaltyPoints; h.consistencyPoints = consistencyPoints; h.dedicationPoints = dedicationPoints;
+  h.penaltyPoints = penaltyPoints; h.consistencyPoints = consistencyPoints;
   DB.saveHabits(habits);
   closeModal('edit-habit-modal');
   showToast('Habit updated', 'success');
