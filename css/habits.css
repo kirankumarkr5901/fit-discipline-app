@@ -1,4 +1,10 @@
 /* ==================== HABITS PAGE ==================== */
+.log-actions-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
 .habits-date-bar {
   display: flex;
   align-items: center;

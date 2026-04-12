@@ -62,6 +62,9 @@ function getHabitsTemplate() {
 
     <!-- Points Log Tab -->
     <div id="habits-log-tab" class="tab-content">
+      <div class="log-actions-bar">
+        <button class="btn btn-danger btn-sm" onclick="clearPointsLog()">🗑️ Clear Log</button>
+      </div>
       <div class="table-wrapper">
         <table class="data-table">
           <thead><tr><th>Date</th><th>Description</th><th>Points</th></tr></thead>
@@ -352,6 +355,13 @@ function loadPointsLog() {
         <td class="action-points ${cls}" style="font-weight:700">${entry.points >= 0 ? '+' : ''}${entry.points}</td>
       </tr>`;
   }).join('');
+}
+
+function clearPointsLog() {
+  if (!confirm('Are you sure you want to clear the entire points log? This cannot be undone. Your current discipline points will remain unchanged.')) return;
+  DB.savePointsLog([]);
+  loadPointsLog();
+  showToast('Points log cleared', 'info');
 }
 
 

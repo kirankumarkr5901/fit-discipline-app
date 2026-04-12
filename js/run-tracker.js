@@ -27,7 +27,10 @@ function getRunTrackerTemplate() {
         <label>Time (minutes)</label>
         <input type="number" id="run-time" step="0.1" min="0" placeholder="e.g., 30" />
       </div>
-      <button class="btn btn-primary" onclick="logRun()">Log Run</button>
+      <div class="form-row inline" style="gap:8px">
+        <button class="btn btn-primary" onclick="logRun()" style="flex:1">Log Run</button>
+        <button class="btn btn-outline btn-sm" onclick="logUnrecordedRun()" title="Log a past run without earning points">Log Unrecorded</button>
+      </div>
     </div>
 
     <div class="run-stats-grid">
@@ -243,6 +246,33 @@ function deleteRun(runId) {
   runs = runs.filter(r => r.id !== runId);
   DB.saveRunLogs(runs);
   showToast('Run deleted', 'info');
+  loadRunStats();
+  loadRunHistory();
+  renderRunChart();
+}
+
+function logUnrecordedRun() {
+  const date = document.getElementById('run-date').value;
+  const distance = parseFloat(document.getElementById('run-distance').value);
+  const time = parseFloat(document.getElementById('run-time').value);
+
+  if (!date) { showToast('Select a date', 'warning'); return; }
+  if (!distance || distance <= 0) { showToast('Enter a valid distance', 'warning'); return; }
+  if (!time || time <= 0) { showToast('Enter a valid time', 'warning'); return; }
+
+  const pace = time / distance;
+  const runs = DB.getRunLogs();
+
+  const run = { id: uid(), date, distance, time, pace: pace.toFixed(2) };
+  runs.push(run);
+  runs.sort((a, b) => b.date.localeCompare(a.date));
+  DB.saveRunLogs(runs);
+
+  showToast(`Unrecorded run logged (no points awarded) 🏃`, 'info');
+
+  document.getElementById('run-distance').value = '';
+  document.getElementById('run-time').value = '';
+
   loadRunStats();
   loadRunHistory();
   renderRunChart();
