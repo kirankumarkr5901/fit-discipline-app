@@ -1,5 +1,5 @@
 /* ===============================================
-   SERVICE WORKER – Fit‑Disciple PWA
+   SERVICE WORKER – Fit‑Discipline PWA
    Cache-first for static assets, network-first for API
    =============================================== */
 

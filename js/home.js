@@ -5,7 +5,7 @@
 function getHomeTemplate() {
   return `
     <div class="hero">
-      <h1>Welcome to <span class="highlight">Fit‑Disciple</span></h1>
+      <h1>Welcome to <span class="highlight">Fit‑Discipline</span></h1>
       <p class="hero-sub">Your discipline is your superpower. Plan workouts, track progress, build habits, and earn rewards — every single day.</p>
     </div>
 

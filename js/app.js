@@ -69,7 +69,7 @@ function navigateTo(page) {
     'habits': '✅ Habits & Discipline',
     'rewards': '🏆 Rewards'
   };
-  document.title = (pageTitles[page] || 'Fit‑Disciple') + ' | Fit‑Disciple';
+  document.title = (pageTitles[page] || 'Fit‑Discipline') + ' | Fit‑Discipline';
 
   switch (page) {
     case 'home':            refreshHome(); break;

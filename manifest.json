@@ -1,6 +1,6 @@
 {
-  "name": "Fit‑Disciple",
-  "short_name": "FitDisciple",
+  "name": "Fit‑Discipline",
+  "short_name": "FitDiscipline",
   "description": "Your personal fitness companion — track workouts, habits & rewards.",
   "start_url": "./index.html",
   "scope": "./",

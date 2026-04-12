@@ -14,7 +14,7 @@ function signInWithGoogle() {
 }
 
 function signOutUser() {
-  if (!confirm('Sign out of Fit-Disciple?')) return;
+  if (!confirm('Sign out of Fit-Discipline?')) return;
   auth.signOut();
 }
 
