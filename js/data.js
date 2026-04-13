@@ -298,6 +298,26 @@ function getHabitStreak(habitId) {
   return streak;
 }
 
+function getHabitMaxStreak(habitId) {
+  const completions = DB.getHabitCompletions();
+  const dates = Object.keys(completions).filter(d => completions[d][habitId]).sort();
+  if (dates.length === 0) return 0;
+
+  let maxStreak = 1, current = 1;
+  for (let i = 1; i < dates.length; i++) {
+    const prev = new Date(dates[i - 1] + 'T00:00:00');
+    const curr = new Date(dates[i] + 'T00:00:00');
+    const diff = (curr - prev) / (1000 * 60 * 60 * 24);
+    if (diff === 1) {
+      current++;
+      if (current > maxStreak) maxStreak = current;
+    } else {
+      current = 1;
+    }
+  }
+  return maxStreak;
+}
+
 function getActiveStreaksCount() {
   const habits = DB.getHabits();
   let count = 0;

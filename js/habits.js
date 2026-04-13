@@ -130,9 +130,15 @@ function loadHabitsDaily() {
     const done = !!dayCompletions[h.id];
     const missed = !done && isPastDate;
     const streak = getHabitStreak(h.id);
+    const maxStreak = getHabitMaxStreak(h.id);
     const itemClass = done ? 'completed' : missed ? 'missed' : '';
     const lockedClass = isLocked ? ' locked' : '';
     const clickHandler = isLocked ? '' : `onclick="toggleHabit('${h.id}')"`;
+    const streakText = isLocked && isFutureDate ? '🔒 Future date'
+      : isLocked && missed ? '🔒 Locked'
+      : missed ? '❌ Missed'
+      : streak > 0 ? `🔥 ${streak} day streak` : 'No streak';
+    const maxStreakText = maxStreak > 0 ? ` · 🏆 Best: ${maxStreak}` : '';
     return `
       <div class="habit-item ${itemClass}${lockedClass}" draggable="${!isLocked}" data-habit-idx="${idx}"
            ${!isLocked ? `ondragstart="onHabitDragStart(event, ${idx})" ondragover="onHabitDragOver(event)" ondrop="onHabitDrop(event, ${idx})" ondragend="onHabitDragEnd(event)"` : ''}>
@@ -140,7 +146,7 @@ function loadHabitsDaily() {
         <div class="habit-checkbox" ${clickHandler}>${done ? '✓' : missed ? '✗' : ''}</div>
         <div class="habit-info" ${clickHandler}>
           <div class="habit-title">${escapeHtml(h.name)}</div>
-          <div class="habit-meta">${isLocked && isFutureDate ? '🔒 Future date' : isLocked && missed ? '🔒 Locked' : missed ? '❌ Missed' : streak > 0 ? '🔥 ' + streak + ' day streak' : 'No streak'}</div>
+          <div class="habit-meta">${streakText}${maxStreakText}</div>
         </div>
         <span class="habit-points-badge">+${h.points}</span>
         ${h.strict ? '<span class="habit-strict-badge">STRICT</span>' : ''}

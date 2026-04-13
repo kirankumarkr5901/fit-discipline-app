@@ -55,8 +55,12 @@ function getRunTrackerTemplate() {
         <input type="number" id="run-distance" step="0.1" min="0" placeholder="e.g., 5.0" />
       </div>
       <div class="form-row">
-        <label>Time (minutes)</label>
-        <input type="number" id="run-time" step="0.1" min="0" placeholder="e.g., 30" />
+        <label>Time</label>
+        <div class="time-input-group">
+          <input type="number" id="run-time-min" min="0" placeholder="min" />
+          <span class="time-sep">:</span>
+          <input type="number" id="run-time-sec" min="0" max="59" placeholder="sec" />
+        </div>
       </div>
       <div class="form-row inline" style="gap:8px">
         <button class="btn btn-primary" onclick="logRun()" style="flex:1">Log Run</button>
@@ -119,8 +123,12 @@ function getRunTrackerTemplate() {
           <input type="number" id="edit-run-distance" step="0.1" min="0" />
         </div>
         <div class="form-row">
-          <label>Time (minutes)</label>
-          <input type="number" id="edit-run-time" step="0.1" min="0" />
+          <label>Time</label>
+          <div class="time-input-group">
+            <input type="number" id="edit-run-time-min" min="0" />
+            <span class="time-sep">:</span>
+            <input type="number" id="edit-run-time-sec" min="0" max="59" />
+          </div>
         </div>
         <input type="hidden" id="edit-run-id" />
         <button class="btn btn-primary" onclick="saveEditRun()">Save</button>
@@ -155,11 +163,13 @@ function changeRunDate(delta) {
 function logRun() {
   const date = document.getElementById('run-date').value;
   const distance = parseFloat(document.getElementById('run-distance').value);
-  const time = parseFloat(document.getElementById('run-time').value);
+  const mins = parseInt(document.getElementById('run-time-min').value) || 0;
+  const secs = parseInt(document.getElementById('run-time-sec').value) || 0;
+  const time = parseFloat((mins + secs / 60).toFixed(2));
 
   if (!date) { showToast('Select a date', 'warning'); return; }
   if (!distance || distance <= 0) { showToast('Enter a valid distance', 'warning'); return; }
-  if (!time || time <= 0) { showToast('Enter a valid time', 'warning'); return; }
+  if (!mins && !secs) { showToast('Enter a valid time', 'warning'); return; }
 
   const pace = time / distance;
   const runs = DB.getRunLogs();
@@ -232,7 +242,8 @@ function logRun() {
 
   addActivity('run', `Ran ${distance}km in ${time}min (${pace.toFixed(2)} min/km)`);
   document.getElementById('run-distance').value = '';
-  document.getElementById('run-time').value = '';
+  document.getElementById('run-time-min').value = '';
+  document.getElementById('run-time-sec').value = '';
 
   loadRunStats();
   loadRunHistory();
@@ -424,8 +435,9 @@ function deleteRun(runId) {
 function logUnrecordedRun() {
   const date = document.getElementById('run-date').value;
   const distance = parseFloat(document.getElementById('run-distance').value);
-  const timeVal = document.getElementById('run-time').value;
-  const time = timeVal ? parseFloat(timeVal) : null;
+  const mins = parseInt(document.getElementById('run-time-min').value) || 0;
+  const secs = parseInt(document.getElementById('run-time-sec').value) || 0;
+  const time = (mins || secs) ? parseFloat((mins + secs / 60).toFixed(2)) : null;
 
   if (!date) { showToast('Select a date', 'warning'); return; }
   if (!distance || distance <= 0) { showToast('Enter a valid distance', 'warning'); return; }
@@ -444,7 +456,8 @@ function logUnrecordedRun() {
   showToast(`Unrecorded run logged (no points awarded) 🏃`, 'info');
 
   document.getElementById('run-distance').value = '';
-  document.getElementById('run-time').value = '';
+  document.getElementById('run-time-min').value = '';
+  document.getElementById('run-time-sec').value = '';
 
   loadRunStats();
   loadRunHistory();
@@ -458,7 +471,8 @@ function openEditRunModal(runId) {
   document.getElementById('edit-run-id').value = r.id;
   document.getElementById('edit-run-date').value = r.date;
   document.getElementById('edit-run-distance').value = r.distance;
-  document.getElementById('edit-run-time').value = r.time;
+  document.getElementById('edit-run-time-min').value = r.time ? Math.floor(r.time) : '';
+  document.getElementById('edit-run-time-sec').value = r.time ? Math.round((r.time - Math.floor(r.time)) * 60) : '';
   openModal('edit-run-modal');
 }
 
@@ -466,11 +480,13 @@ function saveEditRun() {
   const id = document.getElementById('edit-run-id').value;
   const date = document.getElementById('edit-run-date').value;
   const distance = parseFloat(document.getElementById('edit-run-distance').value);
-  const time = parseFloat(document.getElementById('edit-run-time').value);
+  const mins = parseInt(document.getElementById('edit-run-time-min').value) || 0;
+  const secs = parseInt(document.getElementById('edit-run-time-sec').value) || 0;
+  const time = parseFloat((mins + secs / 60).toFixed(2));
 
   if (!date) { showToast('Select a date', 'warning'); return; }
   if (!distance || distance <= 0) { showToast('Enter a valid distance', 'warning'); return; }
-  if (!time || time <= 0) { showToast('Enter a valid time', 'warning'); return; }
+  if (!mins && !secs) { showToast('Enter a valid time', 'warning'); return; }
 
   const runs = DB.getRunLogs();
   const r = runs.find(x => x.id === id);

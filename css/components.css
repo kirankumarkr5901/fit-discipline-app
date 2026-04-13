@@ -125,6 +125,35 @@
 .form-row.inline { display: flex; gap: 8px; align-items: center; }
 .form-row.inline input { flex: 1; }
 
+.time-input-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.time-input-group input {
+  flex: 1;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.time-input-group input:focus {
+  border-color: var(--accent-blue);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.time-sep {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
 .checkbox-row label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 .checkbox-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent-blue); }
 

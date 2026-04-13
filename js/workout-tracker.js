@@ -268,7 +268,7 @@ function renderWorkoutGroup(workouts, planId, date, dayLogs, plan) {
 /* ---- Build Single Tracker Card ---- */
 function buildTrackerCard(w, planId, date, dayLogs, plan, extraClass) {
   const log = dayLogs[w.id];
-  const { currentPR, lifetimePR, isNewPR } = calculatePR(w, planId, date);
+  const { currentPR, currentPRLabel, lifetimePR, isNewPR } = calculatePR(w, planId, date);
   const dayName = getPlanDayName(plan, w.day);
   const badgeClass = w.type === 'strength' ? 'badge-strength' : w.type === 'cardio' ? 'badge-cardio' : 'badge-isolation';
 
@@ -287,17 +287,23 @@ function buildTrackerCard(w, planId, date, dayLogs, plan, extraClass) {
     }
   }
 
+  const loggedClass = log ? ' tracker-card-logged' : '';
+  const isPastDate = date < todayStr();
+  const showGoalToggle = w.type === 'strength';
+  const goalDisabled = isPastDate;
+
   return `
-    <div class="tracker-card${extraClass || ''}">
+    <div class="tracker-card${loggedClass}${extraClass || ''}">
       <div class="tracker-card-header">
         <span class="tracker-card-title">${escapeHtml(w.name)}</span>
         <span class="tracker-card-badge ${badgeClass}">${w.type}</span>
+        ${log ? '<span class="tracker-card-badge badge-done">✅ Done</span>' : ''}
       </div>
       <div class="tracker-card-muscle">🎯 ${w.muscle.charAt(0).toUpperCase() + w.muscle.slice(1)} · ${w.equipment ? w.equipment.charAt(0).toUpperCase() + w.equipment.slice(1) + ' · ' : ''}${escapeHtml(dayName)}</div>
       ${isNewPR ? '<div class="new-pr-message">🎉 New PR!</div>' : ''}
       <div class="pr-row">
         <div class="pr-item">
-          <span class="pr-label">Current PR</span>
+          <span class="pr-label">${currentPRLabel}</span>
           <span class="pr-value">${currentPR || '--'}</span>
         </div>
         <div class="pr-item">
@@ -305,6 +311,11 @@ function buildTrackerCard(w, planId, date, dayLogs, plan, extraClass) {
           <span class="pr-value">${lifetimePR || '--'}</span>
         </div>
       </div>
+      ${showGoalToggle ? `<div class="tracker-goal-toggle${goalDisabled ? ' goal-disabled' : ''}">
+        <span class="goal-label">🎯 Next goal:</span>
+        <label class="goal-option"><input type="radio" name="goal-${w.id}" value="weight" ${getWorkoutGoalForDate(w.id, date) !== 'reps' ? 'checked' : ''} ${goalDisabled ? 'disabled' : `onchange="setWorkoutGoal('${w.id}','weight')"`} /> ⬆️ Weight</label>
+        <label class="goal-option"><input type="radio" name="goal-${w.id}" value="reps" ${getWorkoutGoalForDate(w.id, date) === 'reps' ? 'checked' : ''} ${goalDisabled ? 'disabled' : `onchange="setWorkoutGoal('${w.id}','reps')"`} /> 🔁 Reps</label>
+      </div>` : ''}
       ${log ? `<div class="tracker-log-summary">📊 ${logSummary}</div>` : ''}
       ${log && log.weightMode ? `<div class="weight-mode-tag-row"><span class="weight-mode-tag ${log.weightMode}">${log.weightMode === 'perside' ? '⚖️ Per Side' : '⚖️ Combined'}</span></div>` : ''}
       <div class="tracker-card-actions">
@@ -363,24 +374,91 @@ function setMuscleFilter(muscle) {
 /* ---- PR Calculation ---- */
 function calculatePR(workout, planId, currentDate) {
   const logs = DB.getWorkoutLogs();
-  let lifetimeBestVal = 0, lifetimeBestLog = null;
-  let currentDayBestVal = 0, currentDayBestLog = null;
+  let lifetimeBestLog = null;
+  let currentDayBestLog = null;
+  let recentBestLog = null, recentBestDate = null;
 
   for (const [date, planLogs] of Object.entries(logs)) {
     if (planLogs[planId] && planLogs[planId][workout.id]) {
       const log = planLogs[planId][workout.id];
-      const val = getPRValue(workout.type, log);
-      if (val > lifetimeBestVal) { lifetimeBestVal = val; lifetimeBestLog = log; }
-      if (date === currentDate && val > currentDayBestVal) { currentDayBestVal = val; currentDayBestLog = log; }
+      if (!lifetimeBestLog || comparePR(workout, log, lifetimeBestLog) > 0) lifetimeBestLog = log;
+      if (date === currentDate) {
+        if (!currentDayBestLog || comparePR(workout, log, currentDayBestLog) > 0) currentDayBestLog = log;
+      }
+      if (date !== currentDate && (!recentBestDate || date > recentBestDate)) {
+        recentBestLog = log;
+        recentBestDate = date;
+      }
     }
   }
 
-  const isNewPR = currentDayBestVal > 0 && currentDayBestVal >= lifetimeBestVal;
+  const displayLog = currentDayBestLog || recentBestLog;
+  const displayLabel = currentDayBestLog ? "Today's PR" : 'Recent PR';
+  const isNewPR = currentDayBestLog && lifetimeBestLog && comparePR(workout, currentDayBestLog, lifetimeBestLog) >= 0;
   return {
-    currentPR: currentDayBestLog ? formatPR(workout.type, currentDayBestLog) : null,
+    currentPR: displayLog ? formatPR(workout.type, displayLog) : null,
+    currentPRLabel: displayLabel,
     lifetimePR: lifetimeBestLog ? formatPR(workout.type, lifetimeBestLog) : null,
     isNewPR
   };
+}
+
+function comparePR(workout, logA, logB) {
+  if (workout.type === 'strength') {
+    const wA = getStrengthWeight(logA, workout);
+    const wB = getStrengthWeight(logB, workout);
+    if (wA !== wB) return wA - wB; // higher weight wins
+    return (parseInt(logA.reps) || 0) - (parseInt(logB.reps) || 0); // same weight: higher reps wins
+  }
+  const valA = (parseFloat(logA.time) || 0) * (parseInt(logA.sets) || 1);
+  const valB = (parseFloat(logB.time) || 0) * (parseInt(logB.sets) || 1);
+  return valA - valB;
+}
+
+function getStrengthWeight(log, workout) {
+  if (workout.equipment === 'bodyweight' && log.addedWeight != null) {
+    return parseFloat(log.addedWeight) || 0;
+  }
+  return parseFloat(log.weight) || 0;
+}
+
+/* ---- Workout Goal (weight vs reps) ---- */
+function getWorkoutGoalForDate(workoutId, date) {
+  const goals = JSON.parse(localStorage.getItem('workoutGoals') || '{}');
+  const history = goals[workoutId];
+  if (!history || !Array.isArray(history) || history.length === 0) {
+    // Migrate old format
+    if (history && history.goal) return history.goal;
+    return 'weight';
+  }
+  // Find the latest entry on or before the given date
+  let result = 'weight';
+  for (const entry of history) {
+    if (entry.date <= date) result = entry.goal;
+  }
+  return result;
+}
+
+function getWorkoutGoal(workoutId) {
+  return getWorkoutGoalForDate(workoutId, todayStr());
+}
+
+function setWorkoutGoal(workoutId, goal) {
+  const goals = JSON.parse(localStorage.getItem('workoutGoals') || '{}');
+  let history = goals[workoutId];
+  // Migrate old format
+  if (!Array.isArray(history)) history = [];
+  const today = todayStr();
+  // Update today's entry or add new one
+  const existing = history.find(e => e.date === today);
+  if (existing) {
+    existing.goal = goal;
+  } else {
+    history.push({ date: today, goal });
+    history.sort((a, b) => a.date.localeCompare(b.date));
+  }
+  goals[workoutId] = history;
+  localStorage.setItem('workoutGoals', JSON.stringify(goals));
 }
 
 function getPRValue(type, log) {
@@ -391,7 +469,13 @@ function getPRValue(type, log) {
 }
 
 function formatPR(type, log) {
-  if (type === 'strength') return `${log.weight}kg × ${log.reps} reps`;
+  if (type === 'strength') {
+    if (log.bodyweight != null) {
+      const addedLabel = log.addedWeight > 0 ? ` + ${log.addedWeight}kg` : '';
+      return `${log.bodyweight}kg BW${addedLabel} × ${log.reps} reps`;
+    }
+    return `${log.weight}kg × ${log.reps} reps`;
+  }
   return `${log.time} min × ${log.sets} sets`;
 }
 
@@ -486,10 +570,16 @@ function openLogWorkout(planId, workoutId, workoutType, equipment) {
         </select>
       </div>`;
   } else {
+    const prefillMin = prefill ? Math.floor(prefill.time) : '';
+    const prefillSec = prefill ? Math.round((prefill.time - Math.floor(prefill.time)) * 60) : '';
     fields.innerHTML = `
       <div class="form-row">
-        <label>Time (minutes)</label>
-        <input type="number" id="log-time" step="0.5" value="${prefill ? prefill.time : ''}" placeholder="e.g., 30" />
+        <label>Time</label>
+        <div class="time-input-group">
+          <input type="number" id="log-time-min" min="0" value="${prefillMin}" placeholder="min" />
+          <span class="time-sep">:</span>
+          <input type="number" id="log-time-sec" min="0" max="59" value="${prefillSec}" placeholder="sec" />
+        </div>
       </div>
       <div class="form-row">
         <label>Sets</label>
@@ -550,10 +640,12 @@ function saveWorkoutLog() {
     const wmEl = document.getElementById('log-weight-mode');
     if (wmEl) logData.weightMode = wmEl.value;
   } else {
-    const time = document.getElementById('log-time').value;
+    const mins = parseInt(document.getElementById('log-time-min').value) || 0;
+    const secs = parseInt(document.getElementById('log-time-sec').value) || 0;
+    const time = parseFloat((mins + secs / 60).toFixed(2));
     const sets = document.getElementById('log-sets').value;
-    if (!time || !sets) { showToast('Fill all fields', 'warning'); return; }
-    logData = { time: parseFloat(time), sets: parseInt(sets), type: wType };
+    if ((!mins && !secs) || !sets) { showToast('Fill all fields', 'warning'); return; }
+    logData = { time, sets: parseInt(sets), type: wType };
     const optWeight = document.getElementById('log-weight-optional')?.value;
     if (optWeight) logData.weight = parseFloat(optWeight);
   }
