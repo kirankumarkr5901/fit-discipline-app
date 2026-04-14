@@ -74,6 +74,21 @@ function getWorkoutTrackerTemplate() {
         <input type="hidden" id="swap-workout-from-day" />
         <button class="btn btn-primary" onclick="confirmSwapWorkout()">Move</button>
       </div>
+    </div>
+
+    <div class="workout-cal-section collapsed">
+      <div class="workout-cal-toggle" onclick="this.parentElement.classList.toggle('collapsed')">
+        <h2 class="section-title" style="margin:0">📅 Workout Calendar</h2>
+        <span class="workout-cal-arrow">▾</span>
+      </div>
+      <div class="workout-cal-body">
+        <div class="workout-cal-nav">
+          <button class="btn btn-icon" onclick="changeWorkoutCalMonth(-1)">◀</button>
+          <span id="workout-cal-month-label" class="goals-month-label"></span>
+          <button class="btn btn-icon" onclick="changeWorkoutCalMonth(1)">▶</button>
+        </div>
+        <div id="workout-cal-grid" class="workout-cal-grid"></div>
+      </div>
     </div>`;
 }
 
@@ -82,6 +97,7 @@ function initWorkoutTracker() {
   if (!dateInput.value) dateInput.value = todayStr();
   populatePlanSelect();
   loadWorkoutTracker();
+  initWorkoutCalendar();
 }
 
 function navigateToTodayWorkout() {
@@ -991,4 +1007,160 @@ function renderWorkoutChart(entries, type) {
       }
     }
   });
+}
+
+/* ---- Workout Calendar View ---- */
+let workoutCalMonth = null;
+
+function initWorkoutCalendar() {
+  if (!workoutCalMonth) {
+    const now = new Date();
+    workoutCalMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  }
+  renderWorkoutCalendar();
+}
+
+function changeWorkoutCalMonth(delta) {
+  workoutCalMonth.setMonth(workoutCalMonth.getMonth() + delta);
+  renderWorkoutCalendar();
+}
+
+function renderWorkoutCalendar() {
+  const label = document.getElementById('workout-cal-month-label');
+  const grid = document.getElementById('workout-cal-grid');
+  if (!label || !grid) return;
+
+  const year = workoutCalMonth.getFullYear();
+  const month = workoutCalMonth.getMonth();
+  label.textContent = workoutCalMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const workoutLogs = DB.getWorkoutLogs();
+  const plans = DB.getPlans();
+  const todayStr_ = todayStr();
+
+  // Build workout name lookup
+  const nameMap = {};
+  for (const p of plans) {
+    if (!p.workouts) continue;
+    for (const dk of Object.keys(p.workouts)) {
+      for (const w of p.workouts[dk]) {
+        nameMap[w.id] = w.name;
+      }
+    }
+  }
+
+  const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  let html = dayLabels.map(d => `<div class="wcal-day-label">${d}</div>`).join('');
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const offset = firstDay === 0 ? 6 : firstDay - 1;
+  for (let i = 0; i < offset; i++) html += `<div class="wcal-cell empty"></div>`;
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const ds = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+    const dayLogs = workoutLogs[ds];
+    const isToday = ds === todayStr_ ? ' wcal-today' : '';
+    const isFuture = ds > todayStr_ ? ' wcal-future' : '';
+
+    let workoutNames = [];
+    if (dayLogs) {
+      for (const planId of Object.keys(dayLogs)) {
+        for (const wId of Object.keys(dayLogs[planId])) {
+          workoutNames.push(nameMap[wId] || 'Workout');
+        }
+      }
+    }
+
+    const hasWorkouts = workoutNames.length > 0 ? ' wcal-active' : '';
+    const dots = workoutNames.length > 0
+      ? `<div class="wcal-dots">${workoutNames.slice(0, 3).map(() => '<span class="wcal-dot"></span>').join('')}${workoutNames.length > 3 ? '<span class="wcal-dot-more">+</span>' : ''}</div>`
+      : '';
+
+    const tooltipItems = workoutNames.length > 0 ? workoutNames.join(', ') : '';
+    const tooltip = tooltipItems ? ` title="${day}: ${tooltipItems}"` : '';
+
+    const cellDate = new Date(year, month, day);
+    const dow = cellDate.getDay();
+    const dayTag = dow === 6 ? '<span class="streak-day-tag run">🏃</span>' : dow === 0 ? '<span class="streak-day-tag rest">😴</span>' : '';
+
+    html += `<div class="wcal-cell${hasWorkouts}${isToday}${isFuture}"${tooltip} onclick="showWorkoutCalDetail('${ds}')">
+      <span class="wcal-day-num">${day}</span>
+      ${dayTag}
+      ${dots}
+    </div>`;
+  }
+
+  grid.innerHTML = html;
+}
+
+function showWorkoutCalDetail(dateStr) {
+  const workoutLogs = DB.getWorkoutLogs();
+  const plans = DB.getPlans();
+  const dayLogs = workoutLogs[dateStr];
+
+  const existing = document.getElementById('wcal-detail-popup');
+  if (existing) existing.remove();
+
+  const nameMap = {};
+  for (const p of plans) {
+    if (!p.workouts) continue;
+    for (const dk of Object.keys(p.workouts)) {
+      for (const w of p.workouts[dk]) nameMap[w.id] = w.name;
+    }
+  }
+
+  let workouts = [];
+  if (dayLogs) {
+    for (const planId of Object.keys(dayLogs)) {
+      for (const wId of Object.keys(dayLogs[planId])) {
+        const log = dayLogs[planId][wId];
+        const name = nameMap[wId] || 'Workout';
+        let detail = '';
+        if (log.sets) {
+          detail = log.sets.map(s => s.weight ? `${s.weight}kg × ${s.reps}` : `${s.reps} reps`).join(', ');
+        } else if (log.duration) {
+          detail = `${log.duration} min`;
+        }
+        workouts.push({ name, detail });
+      }
+    }
+  }
+
+  const popup = document.createElement('div');
+  popup.id = 'wcal-detail-popup';
+  popup.className = 'streak-detail-popup';
+
+  if (workouts.length === 0) {
+    popup.innerHTML = `
+      <div class="streak-detail-header">
+        <span class="streak-detail-date">${formatDate(dateStr)}</span>
+        <button class="btn-icon streak-detail-close" onclick="this.closest('.streak-detail-popup').remove()">&times;</button>
+      </div>
+      <div class="streak-detail-empty">No workouts logged</div>`;
+  } else {
+    popup.innerHTML = `
+      <div class="streak-detail-header">
+        <span class="streak-detail-date">${formatDate(dateStr)}</span>
+        <span class="streak-detail-dp">${workouts.length} workout${workouts.length > 1 ? 's' : ''}</span>
+        <button class="btn-icon streak-detail-close" onclick="this.closest('.streak-detail-popup').remove()">&times;</button>
+      </div>
+      ${workouts.map(w => `
+        <div class="streak-detail-group">
+          <div class="streak-detail-group-title">💪 ${escapeHtml(w.name)}</div>
+          ${w.detail ? `<div style="font-size:0.8rem;color:var(--text-secondary);padding-left:20px;">${escapeHtml(w.detail)}</div>` : ''}
+        </div>`).join('')}`;
+  }
+
+  document.querySelector('.workout-cal-body').appendChild(popup);
+
+  setTimeout(() => {
+    function onOutside(e) {
+      if (!popup.contains(e.target) && !e.target.closest('.wcal-cell')) {
+        popup.remove();
+        document.removeEventListener('click', onOutside);
+      }
+    }
+    document.addEventListener('click', onOutside);
+  }, 0);
 }

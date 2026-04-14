@@ -316,7 +316,7 @@ function renderWorkoutPlans() {
 
     const dayGroups = Object.entries(plan.workouts).filter(([day]) => day !== 'optional').map(([day, workouts]) => {
       const dayName = getPlanDayName(plan, day);
-      const items = workouts.map(w => {
+      const items = workouts.map((w, idx) => {
         let linkBadge = '';
         if (w.supersetWith) {
           const partner = workouts.find(x => x.id === w.supersetWith);
@@ -328,7 +328,10 @@ function renderWorkoutPlans() {
         }
         const eliteBadge = w.elite ? '<span class="link-badge elite">⚡ Elite</span>' : '';
         return `
-        <div class="plan-workout-item${w.supersetWith ? ' superset-item' : ''}${w.alternativeOf ? ' alternative-item' : ''}${w.elite ? ' elite-item' : ''}">
+        <div class="plan-workout-item${w.supersetWith ? ' superset-item' : ''}${w.alternativeOf ? ' alternative-item' : ''}${w.elite ? ' elite-item' : ''}"
+             draggable="true" data-plan-id="${plan.id}" data-day="${day}" data-workout-id="${w.id}" data-index="${idx}"
+             ondragstart="onWorkoutDragStart(event)" ondragover="onWorkoutDragOver(event)" ondrop="onWorkoutDrop(event)" ondragend="onWorkoutDragEnd(event)">
+          <span class="drag-handle" title="Drag to reorder">⠿</span>
           <span class="workout-name">${escapeHtml(w.name)}</span>
           <span class="workout-meta">${w.type} · ${w.muscle}${w.equipment ? ' · ' + w.equipment : ''}</span>
           ${eliteBadge}${linkBadge}
@@ -818,4 +821,67 @@ function saveEditHabit() {
   closeModal('edit-habit-modal');
   showToast('Habit updated', 'success');
   renderHabitsList();
+}
+
+/* ---- Drag to Reorder Workouts ---- */
+let dragData = null;
+
+function onWorkoutDragStart(e) {
+  const el = e.target.closest('.plan-workout-item');
+  dragData = {
+    planId: el.dataset.planId,
+    day: el.dataset.day,
+    workoutId: el.dataset.workoutId,
+    index: parseInt(el.dataset.index)
+  };
+  el.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', ''); // Required for Firefox
+}
+
+function onWorkoutDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const el = e.target.closest('.plan-workout-item');
+  if (!el || !dragData) return;
+  // Only allow reorder within same plan+day
+  if (el.dataset.planId !== dragData.planId || el.dataset.day !== dragData.day) return;
+  // Clear previous drag-over
+  document.querySelectorAll('.plan-workout-item.drag-over').forEach(x => x.classList.remove('drag-over'));
+  el.classList.add('drag-over');
+}
+
+function onWorkoutDrop(e) {
+  e.preventDefault();
+  const targetEl = e.target.closest('.plan-workout-item');
+  if (!targetEl || !dragData) return;
+
+  const targetPlanId = targetEl.dataset.planId;
+  const targetDay = targetEl.dataset.day;
+  const targetIndex = parseInt(targetEl.dataset.index);
+
+  // Only allow reorder within same plan+day
+  if (targetPlanId !== dragData.planId || targetDay !== dragData.day) return;
+  if (targetIndex === dragData.index) return;
+
+  const plans = DB.getPlans();
+  const plan = plans.find(p => p.id === dragData.planId);
+  if (!plan) return;
+
+  const workouts = plan.workouts[dragData.day];
+  if (!workouts) return;
+
+  // Move workout from dragData.index to targetIndex
+  const [moved] = workouts.splice(dragData.index, 1);
+  workouts.splice(targetIndex, 0, moved);
+
+  DB.savePlans(plans);
+  renderWorkoutPlans();
+}
+
+function onWorkoutDragEnd(e) {
+  dragData = null;
+  document.querySelectorAll('.plan-workout-item').forEach(el => {
+    el.classList.remove('dragging', 'drag-over');
+  });
 }

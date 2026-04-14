@@ -69,4 +69,6 @@ function startApp() {
   navigateTo('home');
   setTimeout(checkStrictPenalties, 1000);
   scheduleHabitReminder();
+  scheduleGoalReminder();
+  initPullToRefresh();
 }

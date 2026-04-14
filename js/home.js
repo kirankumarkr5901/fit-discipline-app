@@ -6,7 +6,7 @@ function getHomeTemplate() {
   return `
     <div class="hero">
       <h1>Welcome to <span class="highlight">Fit‑Discipline</span></h1>
-      <p class="hero-sub">Your discipline is your superpower. Plan workouts, track progress, build habits, and earn rewards — every single day.</p>
+      <p class="hero-sub" id="daily-quote"></p>
     </div>
 
     <div class="dashboard-stats">
@@ -59,34 +59,21 @@ function getHomeTemplate() {
       <div id="streak-calendar-grid" class="streak-grid"></div>
     </div>
 
-    <h2 class="section-title">Quick Access</h2>
-    <div class="shortcut-grid">
-      <div class="shortcut-card" onclick="navigateTo('planner')">
-        <div class="shortcut-icon">📋</div>
-        <h3>Planner</h3>
-        <p>Create workout plans and manage habits</p>
+    <div class="muscle-heatmap-card">
+      <h2 class="section-title">🏋️ This Week's Muscles</h2>
+      <div class="muscle-body-wrap">
+        <div id="muscle-body-front" class="muscle-body-svg"></div>
+        <div id="muscle-body-back" class="muscle-body-svg"></div>
       </div>
-      <div class="shortcut-card" onclick="navigateTo('workout-tracker')">
-        <div class="shortcut-icon">💪</div>
-        <h3>Workout Tracker</h3>
-        <p>Log workouts and track your PRs</p>
-      </div>
-      <div class="shortcut-card" onclick="navigateTo('run-tracker')">
-        <div class="shortcut-icon">🏃</div>
-        <h3>Run Tracker</h3>
-        <p>Track runs, pace, and distance</p>
-      </div>
-      <div class="shortcut-card" onclick="navigateTo('rewards')">
-        <div class="shortcut-icon">🏆</div>
-        <h3>Rewards</h3>
-        <p>Claim rewards with discipline points</p>
-      </div>
-      <div class="shortcut-card" onclick="navigateTo('body-metrics')">
-        <div class="shortcut-icon">📏</div>
-        <h3>Body Metrics</h3>
-        <p>Track weight, height & BMI over time</p>
-      </div>
+      <div id="muscle-heatmap" class="muscle-heatmap"></div>
     </div>
+
+    <div class="badges-card">
+      <h2 class="section-title">🏅 Milestones & Badges</h2>
+      <div id="badges-grid" class="badges-grid"></div>
+    </div>
+
+    <div id="year-in-review-card" class="year-review-card" style="display:none;"></div>
 
     <div class="home-recent">
       <h2 class="section-title">Recent Activity</h2>
@@ -101,6 +88,16 @@ function getHomeTemplate() {
 }
 
 function refreshHome() {
+  // One-time migration: remove daily challenge data & deduct 30 DP
+  if (!DB._get('_challengeCleanupDone')) {
+    const cc = DB._get('completedChallenges', null);
+    if (cc && Object.keys(cc).length > 0) {
+      addDisciplinePoints(-30, 'Daily Challenge removal correction');
+      DB._set('completedChallenges', undefined);
+    }
+    DB._set('_challengeCleanupDone', true);
+  }
+
   updateDPDisplays();
   const today = todayStr();
 
@@ -126,6 +123,18 @@ function refreshHome() {
 
   // Streak calendar
   initStreakCalendar();
+
+  // Daily quote
+  renderDailyQuote();
+
+  // Badges
+  renderBadges();
+
+  // Muscle heatmap
+  renderMuscleHeatmap();
+
+  // Year in review
+  renderYearInReview();
 
   // Recent activity
   const activities = DB.getActivity();
@@ -473,7 +482,7 @@ function renderStreakCalendar() {
     const dayEntries = pointsLog.filter(e => e.date >= dayStart && e.date <= dayEnd && e.points > 0);
     const bonusEntries = dayEntries.filter(e => {
       const d = e.description || '';
-      return d.includes('PR') || d.startsWith('Action:') || d.startsWith('Goal');
+      return d.includes('Consistency') || d.includes('Dedication') || d.includes('dedication');
     });
     if (bonusEntries.length > 0) {
       score += 1;
@@ -523,7 +532,10 @@ function renderStreakCalendar() {
     const level = getLevel(data.score);
     const isToday = ds === todayStr_ ? ' streak-today' : '';
     const isFuture = ds > todayStr_ ? ' streak-future' : '';
-    html += `<div class="streak-cell level-${level}${isToday}${isFuture}" data-date="${ds}" onclick="showStreakDetail('${ds}')"><span class="streak-day-num">${day}</span></div>`;
+    const cellDate = new Date(year, month, day);
+    const dow = cellDate.getDay();
+    const dayTag = dow === 6 ? '<span class="streak-day-tag run">🏃</span>' : dow === 0 ? '<span class="streak-day-tag rest">😴</span>' : '';
+    html += `<div class="streak-cell level-${level}${isToday}${isFuture}" data-date="${ds}" onclick="showStreakDetail('${ds}')"><span class="streak-day-num">${day}</span>${dayTag}</div>`;
   }
 
   grid.innerHTML = html;
@@ -582,4 +594,441 @@ function showStreakDetail(dateStr) {
     }
     document.addEventListener('click', onOutside);
   }, 0);
+}
+
+/* ---- Daily Motivational Quote ---- */
+const FITNESS_QUOTES = [
+  { text: "The only bad workout is the one that didn't happen.", author: "Unknown" },
+  { text: "Your body can stand almost anything. It's your mind that you have to convince.", author: "Unknown" },
+  { text: "Discipline is choosing between what you want now and what you want most.", author: "Abraham Lincoln" },
+  { text: "The pain you feel today will be the strength you feel tomorrow.", author: "Arnold Schwarzenegger" },
+  { text: "Success isn't always about greatness. It's about consistency.", author: "Dwayne Johnson" },
+  { text: "Don't count the days, make the days count.", author: "Muhammad Ali" },
+  { text: "The hard days are what make you stronger.", author: "Aly Raisman" },
+  { text: "If it doesn't challenge you, it doesn't change you.", author: "Fred DeVito" },
+  { text: "Strength does not come from the body. It comes from the will.", author: "Gandhi" },
+  { text: "The difference between try and triumph is a little umph.", author: "Marvin Phillips" },
+  { text: "Wake up with determination. Go to bed with satisfaction.", author: "Unknown" },
+  { text: "You don't have to be extreme, just consistent.", author: "Unknown" },
+  { text: "Fall in love with taking care of yourself.", author: "Unknown" },
+  { text: "The only way to define your limits is by going beyond them.", author: "Arthur C. Clarke" },
+  { text: "What hurts today makes you stronger tomorrow.", author: "Jay Cutler" },
+  { text: "Your health is an investment, not an expense.", author: "Unknown" },
+  { text: "Motivation is what gets you started. Habit is what keeps you going.", author: "Jim Ryun" },
+  { text: "Push yourself because no one else is going to do it for you.", author: "Unknown" },
+  { text: "Champions keep playing until they get it right.", author: "Billie Jean King" },
+  { text: "A one-hour workout is 4% of your day. No excuses.", author: "Unknown" },
+  { text: "Sweat is just fat crying.", author: "Unknown" },
+  { text: "The body achieves what the mind believes.", author: "Napoleon Hill" },
+  { text: "Strive for progress, not perfection.", author: "Unknown" },
+  { text: "It never gets easier, you just get stronger.", author: "Unknown" },
+  { text: "The clock is ticking. Are you becoming the person you want to be?", author: "Greg Plitt" },
+  { text: "No pain, no gain. Shut up and train.", author: "Unknown" },
+  { text: "Be stronger than your strongest excuse.", author: "Unknown" },
+  { text: "Rome wasn't built in a day, but they worked on it every single day.", author: "Unknown" },
+  { text: "Good things come to those who sweat.", author: "Unknown" },
+  { text: "Train insane or remain the same.", author: "Unknown" },
+  { text: "The resistance that you fight physically in the gym strengthens you mentally.", author: "Arnold Schwarzenegger" },
+];
+
+function renderDailyQuote() {
+  const el = document.getElementById('daily-quote');
+  if (!el) return;
+  // Seed by day so it changes daily but stays the same throughout the day
+  const today = todayStr();
+  const seed = today.split('-').reduce((a, b) => a + parseInt(b), 0);
+  const q = FITNESS_QUOTES[seed % FITNESS_QUOTES.length];
+  el.innerHTML = `"${escapeHtml(q.text)}" <span style="opacity:0.7">— ${escapeHtml(q.author)}</span>`;
+}
+
+/* ---- Milestones & Badges ---- */
+
+// DP earned since 2026-04-13 (excludes carry-over points added before that)
+function getEarnedDP() {
+  const log = DB.getPointsLog();
+  const cutoff = '2026-04-13T00:00:00';
+  return log.filter(e => e.date >= cutoff).reduce((s, e) => s + (e.points || 0), 0);
+}
+
+function dateToStr(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+const BADGE_DEFS = [
+  { id: 'first_workout',  icon: '💪', name: 'First Workout',    desc: 'Log your first workout',       check: () => Object.keys(DB.getWorkoutLogs()).length > 0 },
+  { id: 'first_run',      icon: '🏃', name: 'First Run',        desc: 'Log your first run',           check: () => DB.getRunLogs().length > 0 },
+  { id: 'first_habit',    icon: '✅', name: 'Habit Starter',    desc: 'Complete a habit for the first time', check: () => Object.keys(DB.getHabitCompletions()).length > 0 },
+  { id: 'dp_100',         icon: '⚡', name: 'Centurion',        desc: 'Earn 100 Discipline Points',   check: () => getEarnedDP() >= 100 },
+  { id: 'dp_500',         icon: '🔥', name: 'On Fire',          desc: 'Earn 500 Discipline Points',   check: () => getEarnedDP() >= 500 },
+  { id: 'dp_1000',        icon: '💎', name: 'Diamond Grinder',  desc: 'Earn 1,000 Discipline Points', check: () => getEarnedDP() >= 1000 },
+  { id: 'dp_5000',        icon: '👑', name: 'Royalty',          desc: 'Earn 5,000 Discipline Points', check: () => getEarnedDP() >= 5000 },
+  { id: 'workouts_10',    icon: '🏋️', name: 'Gym Rat',          desc: 'Log 10 workout sessions',      check: () => countTotalWorkouts() >= 10 },
+  { id: 'workouts_50',    icon: '🦾', name: 'Iron Will',        desc: 'Log 50 workout sessions',      check: () => countTotalWorkouts() >= 50 },
+  { id: 'workouts_100',   icon: '🏆', name: 'Century Club',     desc: 'Log 100 workout sessions',     check: () => countTotalWorkouts() >= 100 },
+  { id: 'runs_10',        icon: '👟', name: 'Road Warrior',     desc: 'Complete 10 runs',             check: () => DB.getRunLogs().length >= 10 },
+  { id: 'runs_50',        icon: '🦅', name: 'Eagle Runner',     desc: 'Complete 50 runs',             check: () => DB.getRunLogs().length >= 50 },
+  { id: 'run_50km',       icon: '🌍', name: 'Ultra Distance',   desc: 'Run 50km total',               check: () => DB.getRunLogs().reduce((s, r) => s + r.distance, 0) >= 50 },
+  { id: 'run_100km',      icon: '🚀', name: 'Marathon Master',  desc: 'Run 100km total',              check: () => DB.getRunLogs().reduce((s, r) => s + r.distance, 0) >= 100 },
+  { id: 'streak_7',       icon: '🔥', name: '7-Day Streak',     desc: 'Complete all habits 7 days in a row', check: () => getCurrentAllHabitStreak() >= 7 },
+  { id: 'streak_30',      icon: '💫', name: '30-Day Streak',    desc: 'Complete all habits 30 days in a row', check: () => getCurrentAllHabitStreak() >= 30 },
+  { id: 'streak_100',     icon: '🌟', name: 'Legendary',        desc: 'Complete all habits 100 days in a row', check: () => getCurrentAllHabitStreak() >= 100 },
+  { id: 'goals_1',        icon: '🎯', name: 'Goal Getter',      desc: 'Complete your first goal',     check: () => DB.getGoals().filter(g => g.completed).length >= 1 },
+  { id: 'goals_10',       icon: '🏅', name: 'Goal Crusher',     desc: 'Complete 10 goals',            check: () => DB.getGoals().filter(g => g.completed).length >= 10 },
+];
+
+function countTotalWorkouts() {
+  const logs = DB.getWorkoutLogs();
+  let count = 0;
+  for (const date of Object.keys(logs)) {
+    for (const planId of Object.keys(logs[date])) {
+      count += Object.keys(logs[date][planId]).length;
+    }
+  }
+  return count;
+}
+
+function getCurrentAllHabitStreak() {
+  const habits = DB.getHabits();
+  if (habits.length === 0) return 0;
+  const completions = DB.getHabitCompletions();
+  let streak = 0;
+  const d = new Date(todayStr() + 'T00:00:00');
+  while (true) {
+    const ds = dateToStr(d);
+    const dayComp = completions[ds] || {};
+    if (habits.every(h => dayComp[h.id])) {
+      streak++;
+      d.setDate(d.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
+function renderBadges() {
+  const grid = document.getElementById('badges-grid');
+  if (!grid) return;
+
+  grid.innerHTML = BADGE_DEFS.map(b => {
+    const unlocked = b.check();
+    return `<div class="badge-item ${unlocked ? 'unlocked' : 'locked'}" title="${b.desc}">
+      <span class="badge-icon">${b.icon}</span>
+      <span class="badge-name">${b.name}</span>
+      ${unlocked ? '<span class="badge-check">✓</span>' : ''}
+    </div>`;
+  }).join('');
+}
+
+/* ---- Muscle Group Heatmap ---- */
+function getMuscleActivity() {
+  const workoutLogs = DB.getWorkoutLogs();
+  const plans = DB.getPlans();
+  const today = new Date(todayStr() + 'T00:00:00');
+  const weekAgo = new Date(today);
+  weekAgo.setDate(weekAgo.getDate() - 6);
+
+  // Build muscle lookup from plans
+  const muscleMap = {};
+  for (const p of plans) {
+    if (!p.workouts) continue;
+    for (const dk of Object.keys(p.workouts)) {
+      for (const w of p.workouts[dk]) {
+        muscleMap[w.id] = (w.muscle || 'other').toLowerCase();
+      }
+    }
+  }
+
+  const counts = {};
+  const d = new Date(weekAgo);
+  while (d <= today) {
+    const ds = dateToStr(d);
+    if (workoutLogs[ds]) {
+      for (const planId of Object.keys(workoutLogs[ds])) {
+        for (const wId of Object.keys(workoutLogs[ds][planId])) {
+          const muscle = muscleMap[wId] || 'other';
+          counts[muscle] = (counts[muscle] || 0) + 1;
+        }
+      }
+    }
+    d.setDate(d.getDate() + 1);
+  }
+
+  // Count runs as cardio
+  const runLogs = DB.getRunLogs();
+  for (const run of runLogs) {
+    if (!run.date) continue;
+    const rd = new Date(run.date + 'T00:00:00');
+    if (rd >= weekAgo && rd <= today) {
+      counts['cardio'] = (counts['cardio'] || 0) + 1;
+      counts['legs'] = (counts['legs'] || 0) + 1;
+      counts['calves'] = (counts['calves'] || 0) + 1;
+    }
+  }
+
+  return counts;
+}
+
+function renderMuscleHeatmap() {
+  const container = document.getElementById('muscle-heatmap');
+  if (!container) return;
+
+  const counts = getMuscleActivity();
+  const allMuscles = ['chest', 'back', 'shoulders', 'biceps', 'triceps', 'legs', 'core', 'glutes', 'forearms', 'calves', 'cardio', 'full body'];
+  const icons = {
+    chest: '🫁', back: '🔙', shoulders: '🏋️', biceps: '💪', triceps: '💪',
+    legs: '🦵', core: '🎯', glutes: '🍑', forearms: '✊', calves: '🦶',
+    cardio: '❤️', 'full body': '🏃'
+  };
+
+  const maxCount = Math.max(...Object.values(counts), 1);
+
+  // Include any muscles from data not in the standard list
+  const extraMuscles = Object.keys(counts).filter(m => !allMuscles.includes(m));
+  const muscleList = [...allMuscles, ...extraMuscles];
+
+  container.innerHTML = muscleList.map(m => {
+    const count = counts[m] || 0;
+    const intensity = count === 0 ? 0 : Math.min(Math.ceil((count / maxCount) * 4), 4);
+    return `<div class="muscle-tile intensity-${intensity}" title="${m}: ${count} session${count !== 1 ? 's' : ''} this week">
+      <span class="muscle-tile-icon">${icons[m] || '💪'}</span>
+      <span class="muscle-tile-name">${m}</span>
+      <span class="muscle-tile-count">${count}</span>
+    </div>`;
+  }).join('');
+
+  renderMuscleBody(counts, maxCount);
+}
+
+function getIntensityColor(count, maxCount) {
+  if (count === 0) return 'var(--bg-tertiary, #2a2a2e)';
+  const level = Math.min(Math.ceil((count / maxCount) * 4), 4);
+  return ['', '#9be9a8', '#40c463', '#30a14e', '#216e39'][level];
+}
+
+function renderMuscleBody(counts, maxCount) {
+  const frontEl = document.getElementById('muscle-body-front');
+  const backEl = document.getElementById('muscle-body-back');
+  if (!frontEl || !backEl) return;
+
+  // If "full body" is trained, distribute to all muscles
+  const fb = counts['full body'] || 0;
+  const c = key => (counts[key] || 0) + fb;
+
+  const col = key => getIntensityColor(c(key), maxCount + fb);
+  const opc = key => c(key) === 0 ? '0.25' : '1';
+
+  // Front view
+  frontEl.innerHTML = `
+    <span class="body-view-label">FRONT</span>
+    <svg viewBox="0 0 200 400" xmlns="http://www.w3.org/2000/svg">
+      <!-- Head -->
+      <ellipse cx="100" cy="30" rx="20" ry="24" fill="var(--text-secondary)" opacity="0.3"/>
+      <!-- Neck -->
+      <rect x="92" y="52" width="16" height="14" rx="4" fill="var(--text-secondary)" opacity="0.3"/>
+
+      <!-- Shoulders -->
+      <ellipse cx="60" cy="82" rx="18" ry="12" fill="${col('shoulders')}" opacity="${opc('shoulders')}" class="muscle-part" data-muscle="shoulders"/>
+      <ellipse cx="140" cy="82" rx="18" ry="12" fill="${col('shoulders')}" opacity="${opc('shoulders')}" class="muscle-part" data-muscle="shoulders"/>
+
+      <!-- Chest -->
+      <path d="M68,88 Q100,80 132,88 L128,120 Q100,126 72,120 Z" fill="${col('chest')}" opacity="${opc('chest')}" class="muscle-part" data-muscle="chest"/>
+
+      <!-- Core / Abs -->
+      <rect x="78" y="122" width="44" height="55" rx="8" fill="${col('core')}" opacity="${opc('core')}" class="muscle-part" data-muscle="core"/>
+
+      <!-- Biceps -->
+      <ellipse cx="52" cy="128" rx="11" ry="26" fill="${col('biceps')}" opacity="${opc('biceps')}" class="muscle-part" data-muscle="biceps"/>
+      <ellipse cx="148" cy="128" rx="11" ry="26" fill="${col('biceps')}" opacity="${opc('biceps')}" class="muscle-part" data-muscle="biceps"/>
+
+      <!-- Forearms -->
+      <ellipse cx="46" cy="176" rx="9" ry="24" fill="${col('forearms')}" opacity="${opc('forearms')}" class="muscle-part" data-muscle="forearms"/>
+      <ellipse cx="154" cy="176" rx="9" ry="24" fill="${col('forearms')}" opacity="${opc('forearms')}" class="muscle-part" data-muscle="forearms"/>
+
+      <!-- Hands -->
+      <ellipse cx="42" cy="206" rx="7" ry="8" fill="var(--text-secondary)" opacity="0.3"/>
+      <ellipse cx="158" cy="206" rx="7" ry="8" fill="var(--text-secondary)" opacity="0.3"/>
+
+      <!-- Quads (Legs front) -->
+      <path d="M74,180 Q78,240 70,290 L90,290 Q92,240 88,180 Z" fill="${col('legs')}" opacity="${opc('legs')}" class="muscle-part" data-muscle="legs"/>
+      <path d="M112,180 Q108,240 110,290 L130,290 Q122,240 126,180 Z" fill="${col('legs')}" opacity="${opc('legs')}" class="muscle-part" data-muscle="legs"/>
+
+      <!-- Calves front -->
+      <path d="M72,296 Q76,330 74,365 L88,365 Q90,330 88,296 Z" fill="${col('calves')}" opacity="${opc('calves')}" class="muscle-part" data-muscle="calves"/>
+      <path d="M112,296 Q110,330 112,365 L126,365 Q124,330 128,296 Z" fill="${col('calves')}" opacity="${opc('calves')}" class="muscle-part" data-muscle="calves"/>
+
+      <!-- Feet -->
+      <ellipse cx="80" cy="375" rx="12" ry="6" fill="var(--text-secondary)" opacity="0.3"/>
+      <ellipse cx="120" cy="375" rx="12" ry="6" fill="var(--text-secondary)" opacity="0.3"/>
+
+      <!-- Cardio heart indicator -->
+      ${c('cardio') > 0 ? `<text x="100" y="108" text-anchor="middle" font-size="16">❤️</text>` : ''}
+    </svg>`;
+
+  // Back view
+  backEl.innerHTML = `
+    <span class="body-view-label">BACK</span>
+    <svg viewBox="0 0 200 400" xmlns="http://www.w3.org/2000/svg">
+      <!-- Head -->
+      <ellipse cx="100" cy="30" rx="20" ry="24" fill="var(--text-secondary)" opacity="0.3"/>
+      <!-- Neck -->
+      <rect x="92" y="52" width="16" height="14" rx="4" fill="var(--text-secondary)" opacity="0.3"/>
+
+      <!-- Shoulders back -->
+      <ellipse cx="60" cy="82" rx="18" ry="12" fill="${col('shoulders')}" opacity="${opc('shoulders')}" class="muscle-part" data-muscle="shoulders"/>
+      <ellipse cx="140" cy="82" rx="18" ry="12" fill="${col('shoulders')}" opacity="${opc('shoulders')}" class="muscle-part" data-muscle="shoulders"/>
+
+      <!-- Upper Back -->
+      <path d="M68,88 Q100,82 132,88 L128,130 Q100,136 72,130 Z" fill="${col('back')}" opacity="${opc('back')}" class="muscle-part" data-muscle="back"/>
+
+      <!-- Lower Back -->
+      <rect x="78" y="132" width="44" height="45" rx="8" fill="${col('back')}" opacity="${opc('back')}" class="muscle-part" data-muscle="back"/>
+
+      <!-- Triceps -->
+      <ellipse cx="52" cy="128" rx="11" ry="26" fill="${col('triceps')}" opacity="${opc('triceps')}" class="muscle-part" data-muscle="triceps"/>
+      <ellipse cx="148" cy="128" rx="11" ry="26" fill="${col('triceps')}" opacity="${opc('triceps')}" class="muscle-part" data-muscle="triceps"/>
+
+      <!-- Forearms back -->
+      <ellipse cx="46" cy="176" rx="9" ry="24" fill="${col('forearms')}" opacity="${opc('forearms')}" class="muscle-part" data-muscle="forearms"/>
+      <ellipse cx="154" cy="176" rx="9" ry="24" fill="${col('forearms')}" opacity="${opc('forearms')}" class="muscle-part" data-muscle="forearms"/>
+
+      <!-- Hands -->
+      <ellipse cx="42" cy="206" rx="7" ry="8" fill="var(--text-secondary)" opacity="0.3"/>
+      <ellipse cx="158" cy="206" rx="7" ry="8" fill="var(--text-secondary)" opacity="0.3"/>
+
+      <!-- Glutes -->
+      <ellipse cx="85" cy="186" rx="16" ry="14" fill="${col('glutes')}" opacity="${opc('glutes')}" class="muscle-part" data-muscle="glutes"/>
+      <ellipse cx="115" cy="186" rx="16" ry="14" fill="${col('glutes')}" opacity="${opc('glutes')}" class="muscle-part" data-muscle="glutes"/>
+
+      <!-- Hamstrings (Legs back) -->
+      <path d="M74,204 Q78,250 70,290 L90,290 Q92,250 88,204 Z" fill="${col('legs')}" opacity="${opc('legs')}" class="muscle-part" data-muscle="legs"/>
+      <path d="M112,204 Q108,250 110,290 L130,290 Q122,250 126,204 Z" fill="${col('legs')}" opacity="${opc('legs')}" class="muscle-part" data-muscle="legs"/>
+
+      <!-- Calves back -->
+      <path d="M72,296 Q78,330 74,365 L88,365 Q86,330 88,296 Z" fill="${col('calves')}" opacity="${opc('calves')}" class="muscle-part" data-muscle="calves"/>
+      <path d="M112,296 Q116,330 112,365 L126,365 Q128,330 128,296 Z" fill="${col('calves')}" opacity="${opc('calves')}" class="muscle-part" data-muscle="calves"/>
+
+      <!-- Feet -->
+      <ellipse cx="80" cy="375" rx="12" ry="6" fill="var(--text-secondary)" opacity="0.3"/>
+      <ellipse cx="120" cy="375" rx="12" ry="6" fill="var(--text-secondary)" opacity="0.3"/>
+    </svg>`;
+}
+
+/* ---- Year in Review ---- */
+function renderYearInReview() {
+  const card = document.getElementById('year-in-review-card');
+  if (!card) return;
+
+  const today = new Date(todayStr() + 'T00:00:00');
+  const yearStart = new Date(today.getFullYear(), 0, 1);
+
+  const workoutLogs = DB.getWorkoutLogs();
+  const runLogs = DB.getRunLogs();
+  const habits = DB.getHabits();
+  const completions = DB.getHabitCompletions();
+
+  let totalWorkouts = 0;
+  let totalRuns = 0;
+  let totalRunKm = 0;
+  let totalDaysActive = 0;
+  let habitDaysComplete = 0;
+  let bestMonth = '';
+  let bestMonthCount = 0;
+  let longestStreak = 0;
+  let currentStreak = 0;
+
+  const monthActivity = {};
+
+  const d = new Date(yearStart);
+  while (d <= today) {
+    const ds = dateToStr(d);
+    const monthKey = ds.substring(0, 7);
+    let dayActive = false;
+
+    // Workouts
+    if (workoutLogs[ds]) {
+      for (const planId of Object.keys(workoutLogs[ds])) {
+        const count = Object.keys(workoutLogs[ds][planId]).length;
+        totalWorkouts += count;
+        monthActivity[monthKey] = (monthActivity[monthKey] || 0) + count;
+        if (count > 0) dayActive = true;
+      }
+    }
+
+    // Habits
+    const dayComp = completions[ds] || {};
+    const habitsDone = habits.filter(h => dayComp[h.id]).length;
+    if (habits.length > 0 && habitsDone === habits.length) {
+      habitDaysComplete++;
+      currentStreak++;
+      longestStreak = Math.max(longestStreak, currentStreak);
+    } else {
+      currentStreak = 0;
+    }
+    if (habitsDone > 0) dayActive = true;
+
+    if (dayActive) totalDaysActive++;
+    d.setDate(d.getDate() + 1);
+  }
+
+  // Runs this year
+  const yearStartStr = dateToStr(yearStart);
+  const todayStr_ = todayStr();
+  const yearRuns = runLogs.filter(r => r.date >= yearStartStr && r.date <= todayStr_);
+  totalRuns = yearRuns.length;
+  totalRunKm = yearRuns.reduce((s, r) => s + r.distance, 0);
+
+  // Find best month
+  for (const [m, count] of Object.entries(monthActivity)) {
+    if (count > bestMonthCount) {
+      bestMonthCount = count;
+      bestMonth = m;
+    }
+  }
+
+  const bestMonthLabel = bestMonth
+    ? new Date(bestMonth + '-01T00:00:00').toLocaleDateString('en-US', { month: 'long' })
+    : '—';
+
+  const totalDP = DB.getDP();
+
+  card.style.display = 'block';
+  card.innerHTML = `
+    <div class="year-review-header">
+      <h3>📅 ${today.getFullYear()} Year in Review</h3>
+    </div>
+    <div class="year-review-grid">
+      <div class="year-stat">
+        <span class="year-stat-value">${totalDaysActive}</span>
+        <span class="year-stat-label">Days Active</span>
+      </div>
+      <div class="year-stat">
+        <span class="year-stat-value">${totalWorkouts}</span>
+        <span class="year-stat-label">Workouts</span>
+      </div>
+      <div class="year-stat">
+        <span class="year-stat-value">${totalRuns}</span>
+        <span class="year-stat-label">Runs</span>
+      </div>
+      <div class="year-stat">
+        <span class="year-stat-value">${totalRunKm.toFixed(1)}</span>
+        <span class="year-stat-label">Km Run</span>
+      </div>
+      <div class="year-stat">
+        <span class="year-stat-value">${habitDaysComplete}</span>
+        <span class="year-stat-label">Perfect Habit Days</span>
+      </div>
+      <div class="year-stat">
+        <span class="year-stat-value">${longestStreak}</span>
+        <span class="year-stat-label">Longest Streak</span>
+      </div>
+      <div class="year-stat">
+        <span class="year-stat-value">${totalDP}</span>
+        <span class="year-stat-label">Total DP</span>
+      </div>
+      <div class="year-stat">
+        <span class="year-stat-value">${bestMonthLabel}</span>
+        <span class="year-stat-label">Best Month</span>
+      </div>
+    </div>`;
 }

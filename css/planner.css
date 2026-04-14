@@ -138,6 +138,35 @@
   margin-bottom: 4px;
   font-size: 0.85rem;
   flex-wrap: wrap;
+  transition: opacity 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.plan-workout-item[draggable="true"] {
+  cursor: grab;
+}
+.plan-workout-item[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.drag-handle {
+  color: var(--text-muted);
+  font-size: 1rem;
+  cursor: grab;
+  user-select: none;
+  flex-shrink: 0;
+  line-height: 1;
+  opacity: 0.5;
+  transition: opacity var(--transition);
+}
+.plan-workout-item:hover .drag-handle {
+  opacity: 1;
+}
+
+.plan-workout-item.dragging {
+  opacity: 0.4;
+}
+.plan-workout-item.drag-over {
+  box-shadow: 0 -2px 0 0 var(--accent-blue);
 }
 
 .plan-workout-item.superset-item { border-left: 3px solid var(--accent-blue); }

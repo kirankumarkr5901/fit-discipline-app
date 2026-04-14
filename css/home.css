@@ -429,6 +429,15 @@
   color: var(--text-muted);
 }
 
+.streak-day-tag {
+  font-size: 0.7rem;
+  line-height: 1;
+  pointer-events: none;
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+}
+
 /* Streak Detail Popup */
 .streak-calendar-card {
   position: relative;
@@ -528,14 +537,221 @@
   font-weight: 700;
 }
 
+/* ==================== BADGES ==================== */
+.badges-card {
+  margin-bottom: 32px;
+}
+
+.badges-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.badge-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 8px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  position: relative;
+  transition: all var(--transition);
+}
+
+.badge-item.unlocked {
+  border-color: #f59e0b;
+  background: color-mix(in srgb, #f59e0b 8%, var(--bg-secondary));
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.15);
+}
+
+.badge-item.locked {
+  opacity: 0.45;
+  filter: grayscale(0.8);
+}
+
+.badge-icon {
+  font-size: 1.8rem;
+}
+
+.badge-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.badge-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  font-size: 0.7rem;
+  background: #10b981;
+  color: #fff;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
 @media (max-width: 768px) {
   .hero { padding: 32px 24px; }
   .hero h1 { font-size: 1.8rem; }
   .dashboard-stats { grid-template-columns: repeat(2, 1fr); }
   .shortcut-grid { grid-template-columns: 1fr; }
+  .badges-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+  .year-review-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 480px) {
   .dashboard-stats { grid-template-columns: 1fr; }
   .hero h1 { font-size: 1.5rem; }
+}
+
+/* ==================== MUSCLE HEATMAP ==================== */
+.muscle-heatmap-card {
+  margin-bottom: 32px;
+}
+
+.muscle-body-wrap {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.muscle-body-svg {
+  position: relative;
+  width: 140px;
+  max-width: 45%;
+}
+
+.muscle-body-svg svg {
+  width: 100%;
+  height: auto;
+}
+
+.body-view-label {
+  display: block;
+  text-align: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 1.5px;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.muscle-part {
+  transition: opacity 0.3s ease, fill 0.3s ease;
+}
+
+.muscle-body-svg svg:hover .muscle-part[data-muscle] {
+  filter: brightness(1.15);
+}
+
+.muscle-heatmap {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 8px;
+}
+
+.muscle-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 12px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  transition: all var(--transition);
+}
+
+.muscle-tile-icon { font-size: 1.3rem; }
+.muscle-tile-name {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: capitalize;
+}
+.muscle-tile-count {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.muscle-tile.intensity-0 { opacity: 0.4; }
+.muscle-tile.intensity-1 {
+  border-color: #9be9a8;
+  background: color-mix(in srgb, #9be9a8 10%, var(--bg-secondary));
+}
+.muscle-tile.intensity-2 {
+  border-color: #40c463;
+  background: color-mix(in srgb, #40c463 15%, var(--bg-secondary));
+}
+.muscle-tile.intensity-3 {
+  border-color: #30a14e;
+  background: color-mix(in srgb, #30a14e 20%, var(--bg-secondary));
+}
+.muscle-tile.intensity-4 {
+  border-color: #216e39;
+  background: color-mix(in srgb, #216e39 25%, var(--bg-secondary));
+  box-shadow: 0 0 8px rgba(33, 110, 57, 0.2);
+}
+
+/* ==================== YEAR IN REVIEW ==================== */
+.year-review-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  margin-bottom: 32px;
+  box-shadow: var(--shadow-sm);
+}
+
+.year-review-header {
+  margin-bottom: 16px;
+}
+
+.year-review-header h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.year-review-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.year-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 12px 6px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+}
+
+.year-stat-value {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--accent-blue);
+}
+
+.year-stat-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
 }

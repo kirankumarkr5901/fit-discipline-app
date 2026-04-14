@@ -57,8 +57,22 @@ function buildPages() {
 
 /* ---- Navigation ---- */
 function navigateTo(page) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById('page-' + page).classList.add('active');
+  const currentActive = document.querySelector('.page.active');
+  const nextPage = document.getElementById('page-' + page);
+
+  if (currentActive && currentActive !== nextPage) {
+    currentActive.classList.add('page-exit');
+    currentActive.addEventListener('animationend', () => {
+      currentActive.classList.remove('active', 'page-exit');
+    }, { once: true });
+  } else if (currentActive) {
+    currentActive.classList.remove('active');
+  }
+
+  nextPage.classList.add('active', 'page-enter');
+  nextPage.addEventListener('animationend', () => {
+    nextPage.classList.remove('page-enter');
+  }, { once: true });
 
   document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
   document.querySelectorAll(`.nav-link[data-page="${page}"]`).forEach(l => l.classList.add('active'));
@@ -201,6 +215,135 @@ function fireHabitReminder() {
   };
 }
 
+/* ---- 9 AM Daily Goal Reminder ---- */
+let goalReminderTimer = null;
+
+function scheduleGoalReminder() {
+  if (goalReminderTimer) clearTimeout(goalReminderTimer);
+
+  function setNext() {
+    const now = new Date();
+    const target = new Date(now);
+    target.setHours(9, 0, 0, 0); // 9:00 AM
+    if (now >= target) {
+      target.setDate(target.getDate() + 1);
+    }
+    const ms = target - now;
+
+    goalReminderTimer = setTimeout(() => {
+      fireGoalReminder();
+      setNext();
+    }, ms);
+  }
+
+  setNext();
+}
+
+function fireGoalReminder() {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+  const goals = DB.getGoals();
+  const today = new Date(todayStr() + 'T00:00:00');
+
+  // Overdue target goals
+  const overdue = goals.filter(g => g.type === 'targeted' && !g.completed && g.targetDate && new Date(g.targetDate + 'T00:00:00') < today);
+
+  // Due soon (within 3 days)
+  const threeDays = new Date(today);
+  threeDays.setDate(threeDays.getDate() + 3);
+  const dueSoon = goals.filter(g => g.type === 'targeted' && !g.completed && g.targetDate && (() => {
+    const d = new Date(g.targetDate + 'T00:00:00');
+    return d >= today && d <= threeDays;
+  })());
+
+  // Monthly goals not yet completed in current month
+  const currentMonth = todayStr().substring(0, 7);
+  const monthPending = goals.filter(g => g.type === 'monthly' && !g.completed && g.month === currentMonth);
+  const isLastWeek = today.getDate() > 23;
+
+  if (overdue.length === 0 && dueSoon.length === 0 && !(isLastWeek && monthPending.length > 0)) return;
+
+  let body = '';
+  if (overdue.length > 0) {
+    body += `⚠️ ${overdue.length} overdue goal${overdue.length > 1 ? 's' : ''}! `;
+  }
+  if (dueSoon.length > 0) {
+    body += `🏁 ${dueSoon.length} goal${dueSoon.length > 1 ? 's' : ''} due within 3 days. `;
+  }
+  if (isLastWeek && monthPending.length > 0) {
+    body += `📅 ${monthPending.length} monthly goal${monthPending.length > 1 ? 's' : ''} still pending.`;
+  }
+
+  const n = new Notification('🎯 Goal Reminder', {
+    body: body.trim(),
+    icon: 'assets/icon-192.svg',
+    tag: 'goal-reminder',
+    requireInteraction: true
+  });
+
+  n.onclick = () => {
+    window.focus();
+    navigateTo('goals');
+    n.close();
+  };
+}
+
 function toggleUserDropdown() {
   document.getElementById('user-dropdown').classList.toggle('open');
+}
+
+/* ---- Pull-to-Refresh ---- */
+let pullStartY = 0;
+let pullDist = 0;
+let pulling = false;
+
+function initPullToRefresh() {
+  const container = document.getElementById('app-container');
+
+  container.addEventListener('touchstart', (e) => {
+    if (window.scrollY === 0 && document.querySelector('#page-home.active')) {
+      pullStartY = e.touches[0].clientY;
+      pulling = true;
+    }
+  }, { passive: true });
+
+  container.addEventListener('touchmove', (e) => {
+    if (!pulling) return;
+    pullDist = e.touches[0].clientY - pullStartY;
+    if (pullDist < 0) { pullDist = 0; return; }
+
+    let indicator = document.getElementById('pull-refresh-indicator');
+    if (!indicator) {
+      indicator = document.createElement('div');
+      indicator.id = 'pull-refresh-indicator';
+      indicator.className = 'pull-refresh-indicator';
+      container.prepend(indicator);
+    }
+
+    const progress = Math.min(pullDist / 80, 1);
+    indicator.style.height = Math.min(pullDist * 0.5, 50) + 'px';
+    indicator.style.opacity = progress;
+    indicator.textContent = progress >= 1 ? '↻ Release to refresh' : '↓ Pull to refresh';
+  }, { passive: true });
+
+  container.addEventListener('touchend', () => {
+    if (!pulling) return;
+    pulling = false;
+    const indicator = document.getElementById('pull-refresh-indicator');
+
+    if (pullDist >= 80 && document.querySelector('#page-home.active')) {
+      if (indicator) {
+        indicator.textContent = '↻ Refreshing...';
+        indicator.style.height = '40px';
+      }
+      setTimeout(() => {
+        refreshHome();
+        showToast('Refreshed!', 'success');
+        if (indicator) indicator.remove();
+      }, 400);
+    } else {
+      if (indicator) indicator.remove();
+    }
+    pullDist = 0;
+  }, { passive: true });
 }
