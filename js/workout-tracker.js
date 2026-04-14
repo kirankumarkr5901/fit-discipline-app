@@ -84,6 +84,29 @@ function initWorkoutTracker() {
   loadWorkoutTracker();
 }
 
+function navigateToTodayWorkout() {
+  navigateTo('workout-tracker');
+  const dateInput = document.getElementById('workout-tracker-date');
+  dateInput.value = todayStr();
+  const planId = document.getElementById('tracker-plan-select').value;
+  if (planId) {
+    const plans = DB.getPlans();
+    const plan = plans.find(p => p.id === planId);
+    if (plan) {
+      const d = new Date(dateInput.value + 'T00:00:00');
+      const weekday = d.getDay(); // 0=Sun, 1=Mon, ...
+      const dayNum = weekday === 0 ? 7 : weekday; // Mon=1, Tue=2, ..., Sun=7
+      activeDay = dayNum <= plan.days ? String(dayNum) : 'all';
+    } else {
+      activeDay = 'all';
+    }
+  } else {
+    activeDay = 'all';
+  }
+  activeMuscleFilter = 'all';
+  loadWorkoutTracker();
+}
+
 function setWorkoutDateToday() {
   document.getElementById('workout-tracker-date').value = todayStr();
   loadWorkoutTracker();
@@ -129,10 +152,25 @@ function loadWorkoutTracker() {
     ? Object.keys(plan.workouts).filter(d => d !== 'optional')
     : [activeDay];
 
+  // Collect elite workouts from ALL days (they are day-independent)
+  const eliteWorkouts = [];
+  const eliteIds = new Set();
+  for (const day of Object.keys(plan.workouts)) {
+    if (day === 'optional') continue;
+    for (const w of plan.workouts[day] || []) {
+      if (w.elite && !eliteIds.has(w.id)) {
+        eliteIds.add(w.id);
+        eliteWorkouts.push({ ...w, day });
+      }
+    }
+  }
+
   for (const day of daysToShow) {
     const workouts = plan.workouts[day] || [];
     for (const w of workouts) {
-      allWorkouts.push({ ...w, day });
+      if (!w.elite) { // Elite workouts handled separately
+        allWorkouts.push({ ...w, day });
+      }
     }
   }
 
@@ -167,9 +205,25 @@ function loadWorkoutTracker() {
   const dayLogs = (logs[date] && logs[date][planId]) || {};
 
   const container = document.getElementById('workout-tracker-cards');
-  if (filtered.length === 0) {
+  if (filtered.length === 0 && eliteWorkouts.length === 0) {
     container.innerHTML = '<p class="empty-state">No workouts for this selection. Add workouts in the Planner.</p>';
     return;
+  }
+
+  // Render elite section at the top (always visible, day-independent)
+  let eliteSectionHtml = '';
+  if (eliteWorkouts.length > 0) {
+    const eliteCards = eliteWorkouts.map(w => buildTrackerCard(w, planId, date, dayLogs, plan)).join('');
+    const eliteDoneCount = eliteWorkouts.filter(w => dayLogs[w.id]).length;
+    eliteSectionHtml = `<div class="elite-section">
+      <div class="elite-section-header">
+        <h3 class="elite-section-title">⚡ Elite Workouts</h3>
+        <span class="elite-section-meta">${eliteDoneCount}/${eliteWorkouts.length} done</span>
+      </div>
+      <div class="elite-section-body">
+        <div class="tracker-cards">${eliteCards}</div>
+      </div>
+    </div>`;
   }
 
   // Render workouts grouped by day when viewing all, or flat for a single day
@@ -186,9 +240,9 @@ function loadWorkoutTracker() {
         <div class="tracker-cards">${dayContent}</div>
       </div>`;
     }
-    container.innerHTML = fullHtml;
+    container.innerHTML = eliteSectionHtml + fullHtml;
   } else {
-    container.innerHTML = renderWorkoutGroup(filtered, planId, date, dayLogs, plan);
+    container.innerHTML = eliteSectionHtml + renderWorkoutGroup(filtered, planId, date, dayLogs, plan);
   }
 
   // Render optional workouts section
@@ -200,7 +254,7 @@ function loadWorkoutTracker() {
     const optContent = renderWorkoutGroup(optionalFiltered, planId, date, dayLogs, plan);
     const optLoggedCount = optionalFiltered.filter(w => dayLogs[w.id]).length;
     container.innerHTML += `
-      <div class="optional-section">
+      <div class="optional-section collapsed">
         <div class="optional-section-header" onclick="this.parentElement.classList.toggle('collapsed')">
           <h3 class="optional-section-title">⭐ Optional Workouts</h3>
           <span class="optional-section-meta">${optLoggedCount}/${optionalFiltered.length} done</span>
@@ -211,12 +265,60 @@ function loadWorkoutTracker() {
         </div>
       </div>`;
   }
+
+  // Check if all non-optional workouts for this view are completed
+  if (filtered.length > 0) {
+    const allDone = checkAllWorkoutsDone(filtered, dayLogs);
+    if (allDone) {
+      container.innerHTML = `<div class="workout-celebration">
+        <div class="celebration-content">
+          <div class="celebration-emoji">🎉</div>
+          <h2 class="celebration-title">All Workouts Done!</h2>
+          <p class="celebration-text">You crushed it today! Every workout is complete.</p>
+        </div>
+      </div>` + container.innerHTML;
+    }
+  }
+}
+
+function checkAllWorkoutsDone(workouts, dayLogs) {
+  const checked = new Set();
+  for (const w of workouts) {
+    if (checked.has(w.id)) continue;
+    checked.add(w.id);
+
+    if (w.supersetWith) {
+      const partner = workouts.find(x => x.id === w.supersetWith);
+      if (partner && !checked.has(partner.id)) {
+        checked.add(partner.id);
+        // Both must be logged
+        if (!dayLogs[w.id] || !dayLogs[partner.id]) return false;
+        continue;
+      }
+    }
+
+    if (w.alternativeOf) {
+      const partner = workouts.find(x => x.id === w.alternativeOf);
+      if (partner && !checked.has(partner.id)) {
+        checked.add(partner.id);
+        // At least one must be logged
+        if (!dayLogs[w.id] && !dayLogs[partner.id]) return false;
+        continue;
+      }
+    }
+
+    // Normal workout
+    if (!dayLogs[w.id]) return false;
+  }
+  return true;
 }
 
 function renderWorkoutGroup(workouts, planId, date, dayLogs, plan) {
   const rendered = new Set();
-  let singlesHtml = '';
-  let groupsHtml = '';
+  let pendingSingles = '';
+  let pendingGroups = '';
+  let doneSingles = '';
+  let doneGroups = '';
 
   for (const w of workouts) {
     if (rendered.has(w.id)) continue;
@@ -227,13 +329,19 @@ function renderWorkoutGroup(workouts, planId, date, dayLogs, plan) {
       const partner = workouts.find(x => x.id === w.supersetWith);
       if (partner && !rendered.has(partner.id)) {
         rendered.add(partner.id);
-        groupsHtml += `<div class="superset-group">
+        const html = `<div class="superset-group">
           <div class="group-label superset-label">🔗 SUPERSET</div>
           <div class="group-cards">
             ${buildTrackerCard(w, planId, date, dayLogs, plan)}
             ${buildTrackerCard(partner, planId, date, dayLogs, plan)}
           </div>
         </div>`;
+        // Superset is done only if BOTH are logged
+        if (dayLogs[w.id] && dayLogs[partner.id]) {
+          doneGroups += html;
+        } else {
+          pendingGroups += html;
+        }
         continue;
       }
     }
@@ -247,22 +355,49 @@ function renderWorkoutGroup(workouts, planId, date, dayLogs, plan) {
         const logB = dayLogs[partner.id];
         const dimA = !logA && logB ? ' alt-dimmed' : '';
         const dimB = !logB && logA ? ' alt-dimmed' : '';
-        groupsHtml += `<div class="alternative-group">
+        const html = `<div class="alternative-group">
           <div class="group-label alternative-label">🔀 ALTERNATIVE — pick one</div>
           <div class="group-cards">
             ${buildTrackerCard(w, planId, date, dayLogs, plan, dimA)}
             ${buildTrackerCard(partner, planId, date, dayLogs, plan, dimB)}
           </div>
         </div>`;
+        // Alternative is done if at least one is logged
+        if (logA || logB) {
+          doneGroups += html;
+        } else {
+          pendingGroups += html;
+        }
         continue;
       }
     }
 
     // Normal card
-    singlesHtml += buildTrackerCard(w, planId, date, dayLogs, plan);
+    const cardHtml = buildTrackerCard(w, planId, date, dayLogs, plan);
+    if (dayLogs[w.id]) {
+      doneSingles += cardHtml;
+    } else {
+      pendingSingles += cardHtml;
+    }
   }
 
-  return singlesHtml + groupsHtml;
+  const pendingHtml = pendingSingles + pendingGroups;
+  const doneHtml = doneSingles + doneGroups;
+
+  let result = pendingHtml;
+  if (doneHtml) {
+    result += `<div class="done-section">
+      <div class="done-section-header" onclick="this.parentElement.classList.toggle('collapsed')">
+        <h3 class="done-section-title">✅ Completed</h3>
+        <span class="done-toggle-icon">▾</span>
+      </div>
+      <div class="done-section-body">
+        <div class="tracker-cards">${doneHtml}</div>
+      </div>
+    </div>`;
+  }
+
+  return result;
 }
 
 /* ---- Build Single Tracker Card ---- */
@@ -288,18 +423,22 @@ function buildTrackerCard(w, planId, date, dayLogs, plan, extraClass) {
   }
 
   const loggedClass = log ? ' tracker-card-logged' : '';
+  const eliteClass = w.elite ? ' tracker-card-elite' : '';
   const isPastDate = date < todayStr();
   const showGoalToggle = w.type === 'strength';
   const goalDisabled = isPastDate;
 
+  const eliteStreakHtml = w.elite ? `<div class="elite-consistency">� ${getEliteConsistency(w.id, planId)} total completions</div>` : '';
+
   return `
-    <div class="tracker-card${loggedClass}${extraClass || ''}">
+    <div class="tracker-card${loggedClass}${eliteClass}${extraClass || ''}">
       <div class="tracker-card-header">
         <span class="tracker-card-title">${escapeHtml(w.name)}</span>
+        ${w.elite ? '<span class="tracker-card-badge badge-elite">⚡ ELITE</span>' : ''}
         <span class="tracker-card-badge ${badgeClass}">${w.type}</span>
-        ${log ? '<span class="tracker-card-badge badge-done">✅ Done</span>' : ''}
       </div>
       <div class="tracker-card-muscle">🎯 ${w.muscle.charAt(0).toUpperCase() + w.muscle.slice(1)} · ${w.equipment ? w.equipment.charAt(0).toUpperCase() + w.equipment.slice(1) + ' · ' : ''}${escapeHtml(dayName)}</div>
+      ${eliteStreakHtml}
       ${isNewPR ? '<div class="new-pr-message">🎉 New PR!</div>' : ''}
       <div class="pr-row">
         <div class="pr-item">
@@ -325,6 +464,16 @@ function buildTrackerCard(w, planId, date, dayLogs, plan, extraClass) {
         <button class="btn btn-outline btn-sm swap-btn" onclick="openSwapWorkout('${planId}','${w.id}','${w.day}')" title="${w.day === 'optional' ? 'Move to a day' : 'Move to optional'}">🔄</button>
       </div>
     </div>`;
+}
+
+/* ---- Elite Consistency ---- */
+function getEliteConsistency(workoutId, planId) {
+  const logs = DB.getWorkoutLogs();
+  // Get all dates this workout was logged, sorted descending
+  const loggedDates = Object.keys(logs)
+    .filter(d => logs[d]?.[planId]?.[workoutId])
+    .sort((a, b) => b.localeCompare(a));
+  return loggedDates.length;
 }
 
 /* ---- Day Tabs ---- */

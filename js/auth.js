@@ -68,4 +68,5 @@ function startApp() {
   buildPages();
   navigateTo('home');
   setTimeout(checkStrictPenalties, 1000);
+  scheduleHabitReminder();
 }

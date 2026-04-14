@@ -47,6 +47,7 @@ function buildPages() {
     { id: 'habits',          template: getHabitsTemplate },
     { id: 'rewards',         template: getRewardsTemplate },
     { id: 'body-metrics',    template: getBodyMetricsTemplate },
+    { id: 'goals',            template: getGoalsTemplate },
   ];
 
   container.innerHTML = pages.map(p =>
@@ -69,7 +70,8 @@ function navigateTo(page) {
     'run-tracker': '🏃 Run Tracker',
     'habits': '✅ Habits & Discipline',
     'rewards': '🏆 Rewards',
-    'body-metrics': '📏 Body Metrics'
+    'body-metrics': '📏 Body Metrics',
+    'goals': '🎯 Goals'
   };
   document.title = (pageTitles[page] || 'Fit‑Discipline') + ' | Fit‑Discipline';
 
@@ -81,6 +83,7 @@ function navigateTo(page) {
     case 'habits':          initHabits(); break;
     case 'rewards':         initRewards(); break;
     case 'body-metrics':    initBodyMetrics(); break;
+    case 'goals':           initGoals(); break;
   }
 }
 
@@ -141,6 +144,62 @@ document.addEventListener('click', (e) => {
     dropdown.classList.remove('open');
   }
 });
+
+/* ---- 10 PM Daily Habit Reminder ---- */
+let habitReminderTimer = null;
+
+function scheduleHabitReminder() {
+  // Request notification permission on first launch
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+
+  // Clear any existing timer
+  if (habitReminderTimer) clearTimeout(habitReminderTimer);
+
+  function setNext() {
+    const now = new Date();
+    const target = new Date(now);
+    target.setHours(22, 0, 0, 0); // 10:00 PM
+    if (now >= target) {
+      target.setDate(target.getDate() + 1);
+    }
+    const ms = target - now;
+
+    habitReminderTimer = setTimeout(() => {
+      fireHabitReminder();
+      setNext(); // schedule the next one
+    }, ms);
+  }
+
+  setNext();
+}
+
+function fireHabitReminder() {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+  // Check if habits are already all done
+  const habits = DB.getHabits();
+  const completions = DB.getHabitCompletions();
+  const today = todayStr();
+  const todayComp = completions[today] || {};
+  const pending = habits.filter(h => !todayComp[h.id]);
+
+  if (pending.length === 0) return; // all done, no need to nag
+
+  const n = new Notification('Fit-Discipline 🔥', {
+    body: `You have ${pending.length} habit${pending.length > 1 ? 's' : ''} left to check off today!`,
+    icon: 'assets/icon-192.svg',
+    tag: 'habit-reminder',
+    requireInteraction: true
+  });
+
+  n.onclick = () => {
+    window.focus();
+    navigateTo('habits');
+    n.close();
+  };
+}
 
 function toggleUserDropdown() {
   document.getElementById('user-dropdown').classList.toggle('open');

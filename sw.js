@@ -3,7 +3,7 @@
    Cache-first for static assets, network-first for API
    =============================================== */
 
-const CACHE_NAME = 'fit-disciple-v4';
+const CACHE_NAME = 'fit-disciple-v5';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -19,6 +19,7 @@ const STATIC_ASSETS = [
   './css/habits.css',
   './css/rewards.css',
   './css/body-metrics.css',
+  './css/goals.css',
   './js/firebase-config.js',
   './js/data.js',
   './js/home.js',
@@ -28,6 +29,7 @@ const STATIC_ASSETS = [
   './js/habits.js',
   './js/rewards.js',
   './js/body-metrics.js',
+  './js/goals.js',
   './js/app.js',
   './js/auth.js',
   './assets/icon-192.svg'

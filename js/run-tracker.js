@@ -4,6 +4,14 @@
 
 let runChart = null;
 
+function formatPace(decimalPace) {
+  const p = parseFloat(decimalPace);
+  if (!p || p <= 0) return '--';
+  const mins = Math.floor(p);
+  const secs = Math.round((p - mins) * 60);
+  return `${mins}:${String(secs).padStart(2, '0')}`;
+}
+
 function getRunTrackerTemplate() {
   return `
     <h1 class="page-title">🏃 Run Tracker</h1>
@@ -197,7 +205,7 @@ function logRun() {
 
   if (catRuns.length > 1 && catRank >= 1 && catRank <= 3) {
     const catBonus = catRank === 1 ? Math.round(distance * 1.5) : catRank === 2 ? Math.round(distance) : Math.round(distance * 0.5);
-    addDisciplinePoints(catBonus, `${catLabel} category #${catRank} PR! (${pace.toFixed(2)} min/km)`);
+    addDisciplinePoints(catBonus, `${catLabel} category #${catRank} PR! (${formatPace(pace)} min/km)`);
     totalPointsForRun += catBonus;
   }
 
@@ -208,18 +216,18 @@ function logRun() {
 
     if (rank === 1) {
       const bonus = Math.round(distance * 2);
-      addDisciplinePoints(bonus, `New #1 PR pace! (${pace.toFixed(2)} min/km)`);
+      addDisciplinePoints(bonus, `New #1 PR pace! (${formatPace(pace)} min/km)`);
       totalPointsForRun += bonus;
       document.getElementById('run-new-pr-banner').style.display = 'block';
       showToast(`New PR! 🎉 +${totalPointsForRun} discipline points!`, 'success');
     } else if (rank === 2) {
       const bonus = Math.round(distance * 1.5);
-      addDisciplinePoints(bonus, `New #2 PR pace! (${pace.toFixed(2)} min/km)`);
+      addDisciplinePoints(bonus, `New #2 PR pace! (${formatPace(pace)} min/km)`);
       totalPointsForRun += bonus;
       showToast(`2nd best pace! +${totalPointsForRun} points!`, 'success');
     } else if (rank === 3) {
       const bonus = Math.round(distance);
-      addDisciplinePoints(bonus, `New #3 PR pace! (${pace.toFixed(2)} min/km)`);
+      addDisciplinePoints(bonus, `New #3 PR pace! (${formatPace(pace)} min/km)`);
       totalPointsForRun += bonus;
       showToast(`3rd best pace! +${totalPointsForRun} points!`, 'success');
     } else {
@@ -228,7 +236,7 @@ function logRun() {
     }
   } else if (runs.length === 1) {
     const bonus = Math.round(distance * 2);
-    addDisciplinePoints(bonus, `First run PR! (${pace.toFixed(2)} min/km)`);
+    addDisciplinePoints(bonus, `First run PR! (${formatPace(pace)} min/km)`);
     totalPointsForRun += bonus;
     document.getElementById('run-new-pr-banner').style.display = 'block';
     showToast(`First run logged! 🎉 +${totalPointsForRun} points!`, 'success');
@@ -240,7 +248,7 @@ function logRun() {
   run.pointsEarned = totalPointsForRun;
   DB.saveRunLogs(runs);
 
-  addActivity('run', `Ran ${distance}km in ${time}min (${pace.toFixed(2)} min/km)`);
+  addActivity('run', `Ran ${distance}km in ${time}min (${formatPace(pace)} min/km)`);
   document.getElementById('run-distance').value = '';
   document.getElementById('run-time-min').value = '';
   document.getElementById('run-time-sec').value = '';
@@ -269,12 +277,12 @@ function loadRunStats() {
   const recentRuns = recordedRuns.filter(r => new Date(r.date) >= sevenDaysAgo);
   document.getElementById('run-today-pr').textContent =
     recentRuns.length > 0
-      ? Math.min(...recentRuns.map(r => parseFloat(r.pace))).toFixed(2) + ' min/km'
+      ? formatPace(Math.min(...recentRuns.map(r => parseFloat(r.pace)))) + ' min/km'
       : '--';
 
   document.getElementById('run-lifetime-pr').textContent =
     recordedRuns.length > 0
-      ? Math.min(...recordedRuns.map(r => parseFloat(r.pace))).toFixed(2) + ' min/km'
+      ? formatPace(Math.min(...recordedRuns.map(r => parseFloat(r.pace)))) + ' min/km'
       : '--';
 
   document.getElementById('run-total-distance').textContent =
@@ -294,7 +302,7 @@ function loadRunStats() {
       const cards = `<div class="podium-cards">${top3.map((r, i) => `
           <div class="podium-card podium-${ranks[i]}">
             <span class="podium-medal">${medals[i]}</span>
-            <span class="podium-pace">${parseFloat(r.pace).toFixed(2)} <small>min/km</small></span>
+            <span class="podium-pace">${formatPace(r.pace)} <small>min/km</small></span>
             <span class="podium-detail">${r.distance} km · ${r.time || '--'} min</span>
             <span class="podium-date">${r.date}</span>
           </div>`).join('')}
@@ -404,7 +412,7 @@ function loadRunHistory() {
       <td>${formatDate(r.date)}</td>
       <td>${r.distance} km</td>
       <td>${r.time != null ? r.time + ' min' : '—'}</td>
-      <td>${r.pace != null ? r.pace + ' min/km' : '—'}</td>
+      <td>${r.pace != null ? formatPace(r.pace) + ' min/km' : '—'}</td>
       <td>${points || '—'}</td>
       <td>
         <button class="btn btn-xs btn-outline" onclick="openEditRunModal('${r.id}')" title="Edit">✏️</button>
@@ -577,13 +585,16 @@ function renderRunChart() {
     options: {
       responsive: true,
       interaction: { mode: 'index', intersect: false },
-      plugins: { legend: { labels: { color: isDark ? '#e8e8f0' : '#1a1a2e' } } },
+      plugins: {
+        legend: { labels: { color: isDark ? '#e8e8f0' : '#1a1a2e' } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.yAxisID === 'y' ? `Pace: ${formatPace(ctx.raw)} /km` : `Distance: ${ctx.raw} km` } }
+      },
       scales: {
         x: { ticks: { color: isDark ? '#a0a0b8' : '#555770' }, grid: { color: isDark ? '#33334d' : '#e2e5ea' } },
         y: {
           type: 'linear', display: true, position: 'left',
           title: { display: true, text: 'Pace (min/km)', color: isDark ? '#a0a0b8' : '#555770' },
-          ticks: { color: isDark ? '#a0a0b8' : '#555770' },
+          ticks: { color: isDark ? '#a0a0b8' : '#555770', callback: v => formatPace(v) },
           grid: { color: isDark ? '#33334d' : '#e2e5ea' }
         },
         y1: {

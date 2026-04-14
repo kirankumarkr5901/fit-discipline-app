@@ -86,6 +86,10 @@ function getPlannerTemplate() {
               <option value="bodyweight">Bodyweight</option>
             </select>
           </div>
+          <div class="form-row">
+            <label class="checkbox-label"><input type="checkbox" id="workout-elite" /> <span>⚡ Elite Workout</span></label>
+            <small class="form-hint">Elite workouts are highlighted and tracked separately for consistency</small>
+          </div>
           <input type="hidden" id="workout-plan-id" />
           <input type="hidden" id="workout-edit-id" />
           <input type="hidden" id="workout-edit-day" />
@@ -322,11 +326,12 @@ function renderWorkoutPlans() {
           const partner = workouts.find(x => x.id === w.alternativeOf);
           linkBadge = partner ? `<span class="link-badge alternative">🔀 Alt of ${escapeHtml(partner.name)}</span>` : '';
         }
+        const eliteBadge = w.elite ? '<span class="link-badge elite">⚡ Elite</span>' : '';
         return `
-        <div class="plan-workout-item${w.supersetWith ? ' superset-item' : ''}${w.alternativeOf ? ' alternative-item' : ''}">
+        <div class="plan-workout-item${w.supersetWith ? ' superset-item' : ''}${w.alternativeOf ? ' alternative-item' : ''}${w.elite ? ' elite-item' : ''}">
           <span class="workout-name">${escapeHtml(w.name)}</span>
           <span class="workout-meta">${w.type} · ${w.muscle}${w.equipment ? ' · ' + w.equipment : ''}</span>
-          ${linkBadge}
+          ${eliteBadge}${linkBadge}
           <button class="btn btn-xs btn-outline" onclick="openEditWorkoutModal('${plan.id}','${day}','${w.id}')" title="Edit">✏️</button>
           <button class="btn btn-xs btn-danger" onclick="removeWorkoutFromPlan('${plan.id}','${day}','${w.id}')">✕</button>
         </div>`;
@@ -427,6 +432,7 @@ function openAddWorkoutModal(planId) {
   document.getElementById('workout-type').value = 'strength';
   document.getElementById('workout-muscle').value = 'chest';
   document.getElementById('workout-equipment').value = 'barbell';
+  document.getElementById('workout-elite').checked = false;
   document.querySelector('#add-workout-modal .modal-header h2').textContent = 'Add Workout';
   document.getElementById('workout-modal-btn').textContent = 'Add Workout';
   document.getElementById('workout-modal-btn').setAttribute('onclick', 'addWorkoutToPlan()');
@@ -455,6 +461,7 @@ function openEditWorkoutModal(planId, day, workoutId) {
   document.getElementById('workout-type').value = w.type;
   document.getElementById('workout-muscle').value = w.muscle;
   document.getElementById('workout-equipment').value = w.equipment || 'barbell';
+  document.getElementById('workout-elite').checked = !!w.elite;
   document.querySelector('#add-workout-modal .modal-header h2').textContent = 'Edit Workout';
   document.getElementById('workout-modal-btn').textContent = 'Save Changes';
   document.getElementById('workout-modal-btn').setAttribute('onclick', 'saveEditWorkout()');
@@ -470,6 +477,7 @@ function saveEditWorkout() {
   const type = document.getElementById('workout-type').value;
   const muscle = document.getElementById('workout-muscle').value;
   const equipment = document.getElementById('workout-equipment').value;
+  const elite = document.getElementById('workout-elite').checked;
 
   if (!name) { showToast('Enter a workout name', 'warning'); return; }
 
@@ -479,7 +487,7 @@ function saveEditWorkout() {
 
   if (oldDay === newDay) {
     const w = plan.workouts[oldDay].find(x => x.id === editId);
-    if (w) { w.name = name; w.type = type; w.muscle = muscle; w.equipment = equipment; }
+    if (w) { w.name = name; w.type = type; w.muscle = muscle; w.equipment = equipment; if (elite) w.elite = true; else delete w.elite; }
   } else {
     const w = plan.workouts[oldDay].find(x => x.id === editId);
     if (!w) return;
@@ -493,6 +501,7 @@ function saveEditWorkout() {
     plan.workouts[oldDay] = plan.workouts[oldDay].filter(x => x.id !== editId);
     delete w.supersetWith; delete w.alternativeOf;
     w.name = name; w.type = type; w.muscle = muscle; w.equipment = equipment;
+    if (elite) w.elite = true; else delete w.elite;
     plan.workouts[newDay].push(w);
   }
 
@@ -523,8 +532,11 @@ function addWorkoutToPlan() {
   const plan = plans.find(p => p.id === planId);
   if (!plan) return;
 
+  const elite = document.getElementById('workout-elite').checked;
   if (!plan.workouts[day]) plan.workouts[day] = [];
-  plan.workouts[day].push({ id: uid(), name, type, muscle, equipment });
+  const workout = { id: uid(), name, type, muscle, equipment };
+  if (elite) workout.elite = true;
+  plan.workouts[day].push(workout);
   DB.savePlans(plans);
 
   const dayName = day === 'optional' ? 'Optional' : getPlanDayName(plan, day);

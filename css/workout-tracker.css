@@ -400,6 +400,199 @@
   pointer-events: none;
 }
 
+/* Elite Workout Styles */
+.badge-elite {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #1a1a2e;
+  font-weight: 700;
+}
+
+.tracker-card-elite {
+  border-left: 4px solid #f59e0b;
+  background: linear-gradient(135deg, rgba(245,158,11,0.08), var(--bg-secondary));
+}
+
+.tracker-card-elite.tracker-card-logged {
+  border-left: 4px solid var(--accent-green);
+  background: linear-gradient(135deg, rgba(34,197,94,0.06), rgba(245,158,11,0.04));
+}
+
+.elite-section {
+  grid-column: 1 / -1;
+  margin-bottom: 20px;
+  border: 2px solid #f59e0b;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.elite-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, rgba(245,158,11,0.12), rgba(251,191,36,0.06));
+}
+
+.elite-section-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #f59e0b;
+  margin: 0;
+}
+
+.elite-section-meta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-left: auto;
+  font-weight: 600;
+}
+
+.elite-section-body {
+  padding: 16px;
+}
+
+.elite-consistency {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #f59e0b;
+  padding: 4px 10px;
+  margin-bottom: 8px;
+  background: rgba(245,158,11,0.08);
+  border-radius: var(--radius-sm);
+}
+
+/* Done Section */
+.done-section {
+  grid-column: 1 / -1;
+  margin-top: 12px;
+  border: 2px solid var(--accent-green);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  opacity: 0.75;
+  transition: opacity var(--transition);
+}
+
+.done-section:hover {
+  opacity: 1;
+}
+
+.done-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(34, 197, 94, 0.08);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--transition);
+}
+
+.done-section-header:hover {
+  background: rgba(34, 197, 94, 0.14);
+}
+
+.done-section-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--accent-green);
+  margin: 0;
+}
+
+.done-toggle-icon {
+  font-size: 1.1rem;
+  color: var(--accent-green);
+  transition: transform var(--transition);
+  margin-left: auto;
+}
+
+.done-section.collapsed .done-toggle-icon {
+  transform: rotate(-90deg);
+}
+
+.done-section-body {
+  padding: 16px;
+}
+
+.done-section.collapsed .done-section-body {
+  display: none;
+}
+
+/* Workout Celebration */
+.workout-celebration {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 32px 20px;
+  margin-bottom: 20px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(34,197,94,0.12), rgba(59,130,246,0.08));
+  border: 2px solid var(--accent-green);
+  position: relative;
+  overflow: hidden;
+  animation: celebrationSlideIn 0.5s ease-out;
+}
+
+.celebration-content {
+  position: relative;
+  z-index: 1;
+}
+
+.celebration-emoji {
+  font-size: 3rem;
+  animation: celebrationBounce 1s ease infinite;
+}
+
+.celebration-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--accent-green);
+  margin: 8px 0 4px;
+}
+
+.celebration-text {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.workout-celebration::before,
+.workout-celebration::after {
+  content: '';
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  opacity: 0.1;
+  animation: celebrationPulse 2s ease-in-out infinite;
+}
+
+.workout-celebration::before {
+  top: -40px;
+  left: -40px;
+  background: var(--accent-green);
+}
+
+.workout-celebration::after {
+  bottom: -40px;
+  right: -40px;
+  background: var(--accent-blue);
+  animation-delay: 1s;
+}
+
+@keyframes celebrationSlideIn {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes celebrationBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes celebrationPulse {
+  0%, 100% { transform: scale(1); opacity: 0.1; }
+  50% { transform: scale(1.3); opacity: 0.2; }
+}
+
 @media (max-width: 768px) {
   .group-cards { grid-template-columns: 1fr; }
   .tracker-cards { grid-template-columns: 1fr; }

@@ -45,8 +45,8 @@ const DB = {
     }
 
     try {
-      // merge:true ensures we only add/update fields, never delete them
-      await firestore.collection('users').doc(this._userId).set(this._cache, { merge: true });
+      // Full overwrite so that deleted fields (e.g. unchecked habits) are removed from Firestore
+      await firestore.collection('users').doc(this._userId).set(this._cache);
       this._loadedKeys = currentKeys;
       this._saveLocalBackup();
     } catch (err) {
@@ -59,7 +59,13 @@ const DB = {
     this._loaded = false;
     this._loadedKeys = null;
     try {
-      const doc = await firestore.collection('users').doc(userId).get();
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Firestore load timed out')), 8000)
+      );
+      const doc = await Promise.race([
+        firestore.collection('users').doc(userId).get(),
+        timeout
+      ]);
       if (doc.exists) {
         this._cache = doc.data();
         this._loadedKeys = Object.keys(this._cache).length;
@@ -156,6 +162,8 @@ const DB = {
   saveDailyDedicationPoints(v){ this._set('dailyDedicationPoints', v); },
   getBodyMetrics()         { return this._get('bodyMetrics', []); },
   saveBodyMetrics(b)       { this._set('bodyMetrics', b); },
+  getGoals()               { return this._get('goals', []); },
+  saveGoals(g)             { this._set('goals', g); },
   /* Dark mode stays in localStorage – it's a device preference */
   isDarkMode() {
     try { return JSON.parse(localStorage.getItem('fd_darkMode')) || false; }
