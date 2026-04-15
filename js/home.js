@@ -59,15 +59,6 @@ function getHomeTemplate() {
       <div id="streak-calendar-grid" class="streak-grid"></div>
     </div>
 
-    <div class="muscle-heatmap-card">
-      <h2 class="section-title">🏋️ This Week's Muscles</h2>
-      <div class="muscle-body-wrap">
-        <div id="muscle-body-front" class="muscle-body-svg"></div>
-        <div id="muscle-body-back" class="muscle-body-svg"></div>
-      </div>
-      <div id="muscle-heatmap" class="muscle-heatmap"></div>
-    </div>
-
     <div class="badges-card">
       <h2 class="section-title">🏅 Milestones & Badges</h2>
       <div id="badges-grid" class="badges-grid"></div>
@@ -129,9 +120,6 @@ function refreshHome() {
 
   // Badges
   renderBadges();
-
-  // Muscle heatmap
-  renderMuscleHeatmap();
 
   // Year in review
   renderYearInReview();
@@ -489,10 +477,8 @@ function renderStreakCalendar() {
       details.push({ icon: '⚡', label: `${bonusEntries.length} Bonus${bonusEntries.length > 1 ? 'es' : ''}`, items: bonusEntries.map(e => `+${e.points} ${e.description}`) });
     }
 
-    // Total DP earned
-    const totalDP = dayEntries.reduce((s, e) => s + e.points, 0);
-    const habitDP = checkedHabits.reduce((s, h) => s + h.points, 0);
-    const allDP = totalDP + habitDP;
+    // Total DP earned (points log already includes habit entries, no need to add separately)
+    const allDP = dayEntries.reduce((s, e) => s + e.points, 0);
 
     dayData[ds] = { score, details, totalDP: allDP, hasWorkout: !!(workoutLogs[ds] && Object.keys(workoutLogs[ds]).some(pid => Object.keys(workoutLogs[ds][pid]).length > 0)), hasRun: dayRuns.length > 0 };
   }
@@ -511,6 +497,7 @@ function renderStreakCalendar() {
   }
 
   // Find consecutive inactive days (no workout AND no run) for missed marker
+  const todayStr_ = todayStr();
   const inactiveDays = {};
   for (let day = 1; day <= daysInMonth; day++) {
     const ds = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
@@ -535,7 +522,6 @@ function renderStreakCalendar() {
 
   // Build grid: weekday headers + day cells
   const grid = document.getElementById('streak-calendar-grid');
-  const todayStr_ = todayStr();
   const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   let html = dayLabels.map(d => `<div class="streak-day-label">${d}</div>`).join('');
