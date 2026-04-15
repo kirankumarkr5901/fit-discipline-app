@@ -139,6 +139,13 @@
   word-wrap: break-word;
 }
 
+.goal-reward-dp {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: var(--accent-yellow, #f5a623);
+  font-weight: 600;
+}
+
 .goals-add-btn {
   width: 100%;
   margin-top: 4px;

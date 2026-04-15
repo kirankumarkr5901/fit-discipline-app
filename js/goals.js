@@ -107,6 +107,10 @@ function getGoalsTemplate() {
           <label>Month</label>
           <input type="month" id="goal-month" />
         </div>
+        <div class="form-row">
+          <label>Reward DP <span class="hint">(earned on completion)</span></label>
+          <input type="number" id="goal-reward-dp" value="25" min="0" />
+        </div>
         <div class="form-row checkbox-row">
           <label>
             <input type="checkbox" id="goal-has-dp-target" onchange="toggleGoalDPTarget()" />
@@ -247,6 +251,7 @@ function renderGoalCard(g) {
         </div>
       </div>
       ${g.details ? `<div class="goal-details">${escapeHtml(g.details)}</div>` : ''}
+      ${(g.rewardDP != null && g.rewardDP > 0) ? `<div class="goal-reward-dp">⚡ ${g.rewardDP} DP reward</div>` : ''}
     </div>`;
 }
 
@@ -275,6 +280,7 @@ function openAddGoalModal(type) {
     document.getElementById('goal-month').value = currentGoalMonth;
   }
 
+  document.getElementById('goal-reward-dp').value = '25';
   document.getElementById('goal-has-dp-target').checked = false;
   document.getElementById('goal-dp-target-fields').style.display = 'none';
   document.getElementById('goal-dp-target').value = '100';
@@ -310,6 +316,9 @@ function openEditGoalModal(id) {
     document.getElementById('goal-month').value = g.month || currentGoalMonth;
   }
 
+  // Reward DP
+  document.getElementById('goal-reward-dp').value = g.rewardDP != null ? g.rewardDP : 25;
+
   // DP target fields
   if (g.dpTarget) {
     document.getElementById('goal-has-dp-target').checked = true;
@@ -341,6 +350,8 @@ function saveGoal() {
 
   const goals = DB.getGoals();
 
+  const rewardDP = parseInt(document.getElementById('goal-reward-dp').value) || 0;
+
   // DP target fields
   const hasDPTarget = document.getElementById('goal-has-dp-target').checked;
   let dpTarget = null;
@@ -362,6 +373,7 @@ function saveGoal() {
     } else {
       g.month = document.getElementById('goal-month').value || currentGoalMonth;
     }
+    g.rewardDP = rewardDP;
     if (hasDPTarget) {
       if (!g.dpTarget) g.dpStartDate = new Date().toISOString();
       g.dpTarget = dpTarget;
@@ -388,6 +400,7 @@ function saveGoal() {
       goal.month = document.getElementById('goal-month').value || currentGoalMonth;
     }
 
+    goal.rewardDP = rewardDP;
     if (hasDPTarget) {
       goal.dpTarget = dpTarget;
       goal.dpSources = dpSources;
@@ -411,8 +424,9 @@ function toggleGoalComplete(id) {
   g.completed = !g.completed;
   if (g.completed) {
     g.completedAt = todayStr();
-    addDisciplinePoints(25, `Goal completed: ${g.title}`);
-    showToast('Goal completed! 🎉 +25 DP', 'success');
+    const dp = g.rewardDP != null ? g.rewardDP : 25;
+    if (dp > 0) addDisciplinePoints(dp, `Goal completed: ${g.title}`);
+    showToast(`Goal completed! 🎉${dp > 0 ? ' +' + dp + ' DP' : ''}`, 'success');
   } else {
     delete g.completedAt;
   }
