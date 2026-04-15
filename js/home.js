@@ -477,8 +477,19 @@ function renderStreakCalendar() {
       details.push({ icon: '⚡', label: `${bonusEntries.length} Bonus${bonusEntries.length > 1 ? 'es' : ''}`, items: bonusEntries.map(e => `+${e.points} ${e.description}`) });
     }
 
-    // Total DP earned (points log already includes habit entries, no need to add separately)
-    const allDP = dayEntries.reduce((s, e) => s + e.points, 0);
+    // Total DP earned: habits from completions + non-habit entries from points log
+    const habitDP = checkedHabits.reduce((s, h) => s + h.points, 0);
+    // Dedication bonus: if all habits completed
+    let dedBonusDP = 0;
+    if (habits.length > 0 && habits.every(h => dayComp[h.id])) {
+      dedBonusDP = DB.getDailyDedicationPoints();
+    }
+    // Non-habit/non-bonus entries from points log (workout PRs, running, actions)
+    const nonHabitDP = dayEntries.filter(e => {
+      const d = e.description || '';
+      return (d.startsWith('Workout PR') || d.startsWith('Running:') || d.includes('PR pace') || d.includes('PR!') || d.startsWith('First run') || d.startsWith('Action:'));
+    }).reduce((s, e) => s + e.points, 0);
+    const allDP = habitDP + dedBonusDP + nonHabitDP;
 
     dayData[ds] = { score, details, totalDP: allDP, hasWorkout: !!(workoutLogs[ds] && Object.keys(workoutLogs[ds]).some(pid => Object.keys(workoutLogs[ds][pid]).length > 0)), hasRun: dayRuns.length > 0 };
   }
