@@ -6,6 +6,12 @@
 /* ---- PWA Install Prompt ---- */
 let deferredInstallPrompt = null;
 
+/* ---- Flush pending DB sync on page unload ---- */
+window.addEventListener('beforeunload', () => DB.flushSync());
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') DB.flushSync();
+});
+
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredInstallPrompt = e;

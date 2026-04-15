@@ -337,8 +337,8 @@ function renderPointsBreakdown(startDate, endDate, period) {
       if (first.date !== last.date) {
         runComparisons.push({
           category: catLabel,
-          before: `${first.distance}km · ${first.time}min · ${formatPace(first.pace)} /km`,
-          after: `${last.distance}km · ${last.time}min · ${formatPace(last.pace)} /km`,
+          before: `${first.distance}km · ${formatTime(first.time)} · ${formatPace(first.pace)} /km`,
+          after: `${last.distance}km · ${formatTime(last.time)} · ${formatPace(last.pace)} /km`,
           improved: parseFloat(last.pace) <= parseFloat(first.pace)
         });
       }

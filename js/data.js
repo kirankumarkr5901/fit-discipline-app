@@ -26,12 +26,24 @@ const DB = {
       return;
     }
     this._cache[key] = value;
+    this._saveLocalBackup();
     this._scheduleSync();
   },
 
   _scheduleSync() {
     clearTimeout(this._syncTimeout);
     this._syncTimeout = setTimeout(() => this._syncToFirestore(), 800);
+  },
+
+  flushSync() {
+    if (this._syncTimeout) {
+      clearTimeout(this._syncTimeout);
+      this._syncTimeout = null;
+      // Fire-and-forget: browser may kill this, but local backup is already saved in _set()
+      this._syncToFirestore();
+    }
+    // Ensure local backup is fresh (already done in _set, but just in case)
+    this._saveLocalBackup();
   },
 
   async _syncToFirestore() {
@@ -49,6 +61,8 @@ const DB = {
       await firestore.collection('users').doc(this._userId).set(this._cache);
       this._loadedKeys = currentKeys;
       this._saveLocalBackup();
+      // Record sync time so we can detect un-synced local changes on next load
+      localStorage.setItem('fd_last_sync_' + this._userId, new Date().toISOString());
     } catch (err) {
       console.error('Firestore sync error:', err);
     }
@@ -81,9 +95,28 @@ const DB = {
           this._loadedKeys = 0;
         }
       }
-      // Save a local backup every time we successfully load
+
+      // If local backup is newer than last confirmed Firestore sync, prefer it
+      // This handles cases where _set saved locally but Firestore sync was cut off
+      const backup = this._getLocalBackup(userId);
+      const backupTime = localStorage.getItem('fd_backup_time_' + userId);
+      const lastSyncTime = localStorage.getItem('fd_last_sync_' + userId);
+      const backupIsNewer = backup && backupTime && (!lastSyncTime || backupTime > lastSyncTime);
+      if (backupIsNewer) {
+        const backupKeys = Object.keys(backup).length;
+        if (backupKeys >= Object.keys(this._cache).length) {
+          console.info('Local backup is newer than last sync – using local data');
+          this._cache = backup;
+          this._loadedKeys = backupKeys;
+        }
+      }
+
       this._loaded = true;
       this._saveLocalBackup();
+      // Sync local data to Firestore immediately if backup was preferred
+      if (backupIsNewer) {
+        this._syncToFirestore();
+      }
     } catch (err) {
       console.error('Firestore load error:', err);
       // Load failed – try local backup so the app still works

@@ -12,6 +12,17 @@ function formatPace(decimalPace) {
   return `${mins}:${String(secs).padStart(2, '0')}`;
 }
 
+function formatTime(decimalMinutes) {
+  const t = parseFloat(decimalMinutes);
+  if (!t || t <= 0) return '--';
+  const totalSecs = Math.round(t * 60);
+  const hrs = Math.floor(totalSecs / 3600);
+  const mins = Math.floor((totalSecs % 3600) / 60);
+  const secs = totalSecs % 60;
+  if (hrs > 0) return `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  return `${mins}:${String(secs).padStart(2, '0')}`;
+}
+
 function getRunTrackerTemplate() {
   return `
     <h1 class="page-title">🏃 Run Tracker</h1>
@@ -248,7 +259,7 @@ function logRun() {
   run.pointsEarned = totalPointsForRun;
   DB.saveRunLogs(runs);
 
-  addActivity('run', `Ran ${distance}km in ${time}min (${formatPace(pace)} min/km)`);
+  addActivity('run', `Ran ${distance}km in ${formatTime(time)} (${formatPace(pace)} min/km)`);
   document.getElementById('run-distance').value = '';
   document.getElementById('run-time-min').value = '';
   document.getElementById('run-time-sec').value = '';
@@ -303,7 +314,7 @@ function loadRunStats() {
           <div class="podium-card podium-${ranks[i]}">
             <span class="podium-medal">${medals[i]}</span>
             <span class="podium-pace">${formatPace(r.pace)} <small>min/km</small></span>
-            <span class="podium-detail">${r.distance} km · ${r.time || '--'} min</span>
+            <span class="podium-detail">${r.distance} km · ${formatTime(r.time)}</span>
             <span class="podium-date">${r.date}</span>
           </div>`).join('')}
         </div>`;
@@ -411,7 +422,7 @@ function loadRunHistory() {
     <tr>
       <td>${formatDate(r.date)}</td>
       <td>${r.distance} km</td>
-      <td>${r.time != null ? r.time + ' min' : '—'}</td>
+      <td>${r.time != null ? formatTime(r.time) : '—'}</td>
       <td>${r.pace != null ? formatPace(r.pace) + ' min/km' : '—'}</td>
       <td>${points || '—'}</td>
       <td>

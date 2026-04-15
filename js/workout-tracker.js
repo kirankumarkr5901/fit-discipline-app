@@ -434,7 +434,7 @@ function buildTrackerCard(w, planId, date, dayLogs, plan, extraClass) {
         logSummary = `${log.weight}kg${modeLabel} × ${log.reps} reps × ${log.sets} sets`;
       }
     } else {
-      logSummary = `${log.time} min × ${log.sets} sets${log.weight ? ' · ' + log.weight + 'kg' : ''}`;
+      logSummary = `${formatTime(log.time)} × ${log.sets} sets${log.weight ? ' · ' + log.weight + 'kg' : ''}`;
     }
   }
 
@@ -641,7 +641,7 @@ function formatPR(type, log) {
     }
     return `${log.weight}kg × ${log.reps} reps`;
   }
-  return `${log.time} min × ${log.sets} sets`;
+  return `${formatTime(log.time)} × ${log.sets} sets`;
 }
 
 function updateBWTotal() {
