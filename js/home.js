@@ -693,6 +693,11 @@ function getCurrentAllHabitStreak() {
   const completions = DB.getHabitCompletions();
   let streak = 0;
   const d = new Date(todayStr() + 'T00:00:00');
+  // If today's habits aren't all checked yet, start from yesterday
+  const todayComp = completions[todayStr()] || {};
+  if (!habits.every(h => todayComp[h.id])) {
+    d.setDate(d.getDate() - 1);
+  }
   while (true) {
     const ds = dateToStr(d);
     const dayComp = completions[ds] || {};

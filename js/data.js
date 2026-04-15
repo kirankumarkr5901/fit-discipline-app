@@ -327,6 +327,11 @@ function getHabitStreak(habitId) {
   const completions = DB.getHabitCompletions();
   let streak = 0;
   const d = new Date();
+  // If today's habit isn't checked yet, start from yesterday
+  const todayKey = d.toISOString().split('T')[0];
+  if (!(completions[todayKey] && completions[todayKey][habitId])) {
+    d.setDate(d.getDate() - 1);
+  }
   while (true) {
     const key = d.toISOString().split('T')[0];
     if (completions[key] && completions[key][habitId]) {
