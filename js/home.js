@@ -494,7 +494,7 @@ function renderStreakCalendar() {
     const habitDP = checkedHabits.reduce((s, h) => s + h.points, 0);
     const allDP = totalDP + habitDP;
 
-    dayData[ds] = { score, details, totalDP: allDP };
+    dayData[ds] = { score, details, totalDP: allDP, hasWorkout: !!(workoutLogs[ds] && Object.keys(workoutLogs[ds]).some(pid => Object.keys(workoutLogs[ds][pid]).length > 0)), hasRun: dayRuns.length > 0 };
   }
 
   // Determine intensity levels (0-4)
@@ -508,6 +508,29 @@ function renderStreakCalendar() {
     if (ratio <= 0.5) return 2;
     if (ratio <= 0.75) return 3;
     return 4;
+  }
+
+  // Find consecutive inactive days (no workout AND no run) for missed marker
+  const inactiveDays = {};
+  for (let day = 1; day <= daysInMonth; day++) {
+    const ds = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+    if (ds >= todayStr_) continue;
+    const data = dayData[ds];
+    if (data && !data.hasWorkout && !data.hasRun) {
+      let count = 0;
+      const d2 = new Date(year, month, day);
+      while (true) {
+        const ds2 = d2.getFullYear() + '-' + String(d2.getMonth() + 1).padStart(2, '0') + '-' + String(d2.getDate()).padStart(2, '0');
+        const a = dayData[ds2];
+        if (a && !a.hasWorkout && !a.hasRun && ds2 < todayStr_) {
+          count++;
+          d2.setDate(d2.getDate() - 1);
+        } else {
+          break;
+        }
+      }
+      if (count >= 3) inactiveDays[ds] = true;
+    }
   }
 
   // Build grid: weekday headers + day cells
@@ -532,9 +555,17 @@ function renderStreakCalendar() {
     const level = getLevel(data.score);
     const isToday = ds === todayStr_ ? ' streak-today' : '';
     const isFuture = ds > todayStr_ ? ' streak-future' : '';
-    const cellDate = new Date(year, month, day);
-    const dow = cellDate.getDay();
-    const dayTag = dow === 6 ? '<span class="streak-day-tag run">🏃</span>' : dow === 0 ? '<span class="streak-day-tag rest">😴</span>' : '';
+    // Smart day tag: follow workout calendar logic
+    let dayTag = '';
+    if (ds < todayStr_) {
+      if (data.hasRun) {
+        dayTag = '<span class="streak-day-tag run">🏃</span>';
+      } else if (!data.hasWorkout) {
+        dayTag = inactiveDays[ds] ? '<span class="streak-day-tag missed">❌</span>' : '<span class="streak-day-tag rest">😴</span>';
+      }
+    } else if (ds === todayStr_) {
+      if (data.hasRun) dayTag = '<span class="streak-day-tag run">🏃</span>';
+    }
     html += `<div class="streak-cell level-${level}${isToday}${isFuture}" data-date="${ds}" onclick="showStreakDetail('${ds}')"><span class="streak-day-num">${day}</span>${dayTag}</div>`;
   }
 
