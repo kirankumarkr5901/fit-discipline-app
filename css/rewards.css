@@ -24,3 +24,126 @@
 }
 
 .reward-card .reward-claimed { color: var(--accent-green); font-weight: 600; }
+
+/* ==================== SAVINGS PLANS ==================== */
+.savings-source-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-top: 6px;
+}
+
+.savings-source-checks .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.savings-source-checks input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-blue);
+}
+
+.savings-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition);
+}
+
+.savings-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.savings-card.savings-ready {
+  border-color: var(--accent-green);
+  background: var(--accent-green-light);
+}
+
+.savings-card.savings-completed {
+  opacity: 0.7;
+}
+
+.savings-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.savings-info { flex: 1; }
+
+.savings-name {
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin-bottom: 4px;
+}
+
+.savings-meta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.savings-progress-wrap {
+  margin-bottom: 14px;
+}
+
+.savings-progress-bar {
+  height: 14px;
+  background: var(--bg-tertiary);
+  border-radius: 7px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.savings-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-blue), #6366f1);
+  border-radius: 7px;
+  transition: width 0.5s ease;
+}
+
+.savings-progress-fill.full {
+  background: linear-gradient(90deg, var(--accent-green), #34d399);
+}
+
+.savings-progress-text {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.savings-pct {
+  font-weight: 700;
+  color: var(--accent-blue);
+}
+
+.savings-ready .savings-pct {
+  color: var(--accent-green);
+}
+
+.savings-remaining {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding-top: 2px;
+}
+
+.savings-claim-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .savings-source-checks {
+    gap: 8px 12px;
+  }
+}

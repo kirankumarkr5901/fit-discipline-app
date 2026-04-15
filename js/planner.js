@@ -164,6 +164,18 @@ function getPlannerTemplate() {
           <input type="text" id="habit-name" placeholder="e.g., Drink 3L water" />
         </div>
         <div class="form-row">
+          <label>Category</label>
+          <select id="habit-category">
+            <option value="fitness">💪 Fitness</option>
+            <option value="health">❤️ Health</option>
+            <option value="productivity">🎯 Productivity</option>
+            <option value="mindfulness">🧘 Mindfulness</option>
+            <option value="nutrition">🥗 Nutrition</option>
+            <option value="learning">📚 Learning</option>
+            <option value="other">📌 Other</option>
+          </select>
+        </div>
+        <div class="form-row">
           <label>Discipline Points <span class="hint">(per completion)</span></label>
           <input type="number" id="habit-points" value="5" min="1" />
         </div>
@@ -195,6 +207,18 @@ function getPlannerTemplate() {
           <div class="form-row">
             <label>Habit Name</label>
             <input type="text" id="edit-habit-name" />
+          </div>
+          <div class="form-row">
+            <label>Category</label>
+            <select id="edit-habit-category">
+              <option value="fitness">💪 Fitness</option>
+              <option value="health">❤️ Health</option>
+              <option value="productivity">🎯 Productivity</option>
+              <option value="mindfulness">🧘 Mindfulness</option>
+              <option value="nutrition">🥗 Nutrition</option>
+              <option value="learning">📚 Learning</option>
+              <option value="other">📌 Other</option>
+            </select>
           </div>
           <div class="form-row">
             <label>Discipline Points <span class="hint">(per completion)</span></label>
@@ -723,11 +747,12 @@ function createHabit() {
   const strict = document.getElementById('habit-strict').checked;
   const penaltyPoints = strict ? (parseInt(document.getElementById('habit-penalty-points').value) || 5) : 0;
   const consistencyPoints = parseInt(document.getElementById('habit-consistency-points').value) || 5;
+  const category = document.getElementById('habit-category').value;
 
   if (!name) { showToast('Enter a habit name', 'warning'); return; }
 
   const habits = DB.getHabits();
-  habits.push({ id: uid(), name, points, strict, penaltyPoints, consistencyPoints });
+  habits.push({ id: uid(), name, points, strict, penaltyPoints, consistencyPoints, category });
   DB.saveHabits(habits);
 
   document.getElementById('habit-name').value = '';
@@ -736,6 +761,7 @@ function createHabit() {
   document.getElementById('strict-penalty-row').style.display = 'none';
   document.getElementById('habit-penalty-points').value = '5';
   document.getElementById('habit-consistency-points').value = '5';
+  document.getElementById('habit-category').value = 'fitness';
 
   addActivity('habit', `Created habit "${name}"`);
   showToast('Habit created!', 'success');
@@ -751,15 +777,18 @@ function renderHabitsList() {
     return;
   }
 
+  const catIcons = { fitness: '💪', health: '❤️', productivity: '🎯', mindfulness: '🧘', nutrition: '🥗', learning: '📚', other: '📌' };
   container.innerHTML = habits.map(h => {
     const penalty = h.penaltyPoints || h.points;
     const consistency = h.consistencyPoints != null ? h.consistencyPoints : 5;
     const dedication = h.dedicationPoints != null ? h.dedicationPoints : 10;
+    const cat = h.category || 'other';
     return `
     <div class="habit-manage-card">
       <div class="habit-info">
         <div class="habit-title">${escapeHtml(h.name)}</div>
         <div class="habit-meta">
+          <span class="habit-category-badge cat-${cat}">${catIcons[cat] || '📌'} ${cat}</span>
           +${h.points} pts
           ${h.strict ? ' · Strict (−' + penalty + ' penalty)' : ''}
           · Streak +${consistency}
@@ -794,6 +823,7 @@ function openEditHabitModal(habitId) {
   document.getElementById('edit-habit-penalty-points').value = h.penaltyPoints || h.points;
   document.getElementById('edit-strict-penalty-row').style.display = h.strict ? 'block' : 'none';
   document.getElementById('edit-habit-consistency-points').value = h.consistencyPoints != null ? h.consistencyPoints : 5;
+  document.getElementById('edit-habit-category').value = h.category || 'other';
   openModal('edit-habit-modal');
 }
 
@@ -815,8 +845,10 @@ function saveEditHabit() {
   const habits = DB.getHabits();
   const h = habits.find(x => x.id === id);
   if (!h) return;
+  const category = document.getElementById('edit-habit-category').value;
   h.name = name; h.points = points; h.strict = strict;
   h.penaltyPoints = penaltyPoints; h.consistencyPoints = consistencyPoints;
+  h.category = category;
   DB.saveHabits(habits);
   closeModal('edit-habit-modal');
   showToast('Habit updated', 'success');

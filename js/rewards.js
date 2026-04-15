@@ -22,6 +22,7 @@ function getRewardsTemplate() {
       <button class="tab active" onclick="switchRewardsTab('micro')">🌟 Micro (Daily)</button>
       <button class="tab" onclick="switchRewardsTab('weekly')">📅 Weekly</button>
       <button class="tab" onclick="switchRewardsTab('monthly')">🗓️ Monthly</button>
+      <button class="tab" onclick="switchRewardsTab('savings')">🎯 Savings</button>
       <button class="tab" onclick="switchRewardsTab('manage')">⚙️ Manage</button>
     </div>
 
@@ -33,6 +34,33 @@ function getRewardsTemplate() {
     </div>
     <div id="rewards-monthly-tab" class="tab-content">
       <div id="monthly-rewards-list" class="rewards-grid"></div>
+    </div>
+
+    <!-- Savings Plans Tab -->
+    <div id="rewards-savings-tab" class="tab-content">
+      <div class="form-card">
+        <h2>Create Savings Plan</h2>
+        <div class="form-row">
+          <label>Reward Name</label>
+          <input type="text" id="savings-name" placeholder="e.g., New running shoes" />
+        </div>
+        <div class="form-row">
+          <label>Target DP</label>
+          <input type="number" id="savings-target" value="100" min="1" />
+        </div>
+        <div class="form-row">
+          <label>Count DP From <span class="hint">(select activities)</span></label>
+          <div class="savings-source-checks">
+            <label class="checkbox-label"><input type="checkbox" value="habits" checked /> ✅ Habits</label>
+            <label class="checkbox-label"><input type="checkbox" value="bonuses" checked /> 🏆 Bonuses</label>
+            <label class="checkbox-label"><input type="checkbox" value="workouts" /> 💪 Workouts</label>
+            <label class="checkbox-label"><input type="checkbox" value="running" /> 🏃 Running</label>
+            <label class="checkbox-label"><input type="checkbox" value="actions" /> ⚡ Actions</label>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="createSavingsPlan()">Start Saving</button>
+      </div>
+      <div id="savings-plans-list"></div>
     </div>
     <div id="rewards-manage-tab" class="tab-content">
       <div class="form-card">
@@ -85,6 +113,7 @@ function initRewards() {
   renderRewards('micro');
   renderRewards('weekly');
   renderRewards('monthly');
+  renderSavingsPlans();
 }
 
 function switchRewardsTab(tab) {
@@ -93,6 +122,7 @@ function switchRewardsTab(tab) {
   document.querySelectorAll('#page-rewards .tab').forEach(t => t.classList.remove('active'));
   event.target.classList.add('active');
   if (tab === 'manage') renderManageRewards();
+  if (tab === 'savings') renderSavingsPlans();
 }
 
 function addReward() {
@@ -269,4 +299,183 @@ function resetDisciplinePoints() {
   renderRewards('micro');
   renderRewards('weekly');
   renderRewards('monthly');
+}
+
+/* ====================
+   SAVINGS PLANS
+   ==================== */
+
+function createSavingsPlan() {
+  const name = document.getElementById('savings-name').value.trim();
+  const target = parseInt(document.getElementById('savings-target').value) || 100;
+  if (!name) { showToast('Enter a reward name', 'warning'); return; }
+
+  const checkboxes = document.querySelectorAll('.savings-source-checks input[type="checkbox"]:checked');
+  const sources = Array.from(checkboxes).map(cb => cb.value);
+  if (sources.length === 0) { showToast('Select at least one activity source', 'warning'); return; }
+
+  const plans = DB.getSavingsPlans();
+  plans.push({
+    id: uid(),
+    name,
+    target,
+    sources,
+    startDate: new Date().toISOString(),
+    completed: false,
+    completedDate: null
+  });
+  DB.saveSavingsPlans(plans);
+
+  document.getElementById('savings-name').value = '';
+  document.getElementById('savings-target').value = '100';
+  document.querySelectorAll('.savings-source-checks input[type="checkbox"]').forEach(cb => {
+    cb.checked = cb.value === 'habits' || cb.value === 'bonuses';
+  });
+
+  addActivity('reward', `Started saving for "${name}" (${target} DP)`);
+  showToast(`Savings plan started! Save ${target} DP for ${name}`, 'success');
+  renderSavingsPlans();
+}
+
+function getSavingsProgress(plan) {
+  const log = DB.getPointsLog();
+  const startDate = plan.startDate;
+  let earned = 0;
+
+  for (const entry of log) {
+    if (entry.date < startDate || entry.points <= 0) continue;
+    const desc = entry.description || '';
+    const source = classifyPointsEntry(desc);
+    if (source && plan.sources.includes(source)) {
+      earned += entry.points;
+    }
+  }
+
+  return Math.min(earned, plan.target);
+}
+
+function classifyPointsEntry(desc) {
+  if (desc.startsWith('Habit:') || desc.startsWith('Unchecked:')) return 'habits';
+  if (desc.startsWith('Dedication bonus') || desc.startsWith('Streak bonus') || desc.startsWith('Penalty refund')) return 'bonuses';
+  if (desc.startsWith('Workout PR')) return 'workouts';
+  if (desc.startsWith('Running:') || desc.includes('PR pace') || desc.includes('PR!') || desc.startsWith('First run') || desc.startsWith('New #')) return 'running';
+  if (desc.startsWith('Action:')) return 'actions';
+  return null;
+}
+
+function renderSavingsPlans() {
+  const plans = DB.getSavingsPlans();
+  const container = document.getElementById('savings-plans-list');
+  if (!container) return;
+
+  const active = plans.filter(p => !p.completed);
+  const completed = plans.filter(p => p.completed);
+
+  if (active.length === 0 && completed.length === 0) {
+    container.innerHTML = '<p class="empty-state">No savings plans yet. Create one above to start saving toward a reward!</p>';
+    return;
+  }
+
+  const dp = DB.getDP();
+  const sourceLabels = {
+    habits: '✅ Habits',
+    bonuses: '🏆 Bonuses',
+    workouts: '💪 Workouts',
+    running: '🏃 Running',
+    actions: '⚡ Actions'
+  };
+
+  let html = '';
+
+  if (active.length > 0) {
+    html += active.map(plan => {
+      const progress = getSavingsProgress(plan);
+      const pct = Math.min(Math.round((progress / plan.target) * 100), 100);
+      const isReady = pct >= 100;
+      const canAfford = dp >= plan.target;
+      const sourcesTxt = plan.sources.map(s => sourceLabels[s] || s).join(', ');
+      const startFmt = new Date(plan.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+      return `
+        <div class="savings-card${isReady ? ' savings-ready' : ''}">
+          <div class="savings-header">
+            <div class="savings-info">
+              <div class="savings-name">${isReady ? '🎉' : '🎯'} ${escapeHtml(plan.name)}</div>
+              <div class="savings-meta">Since ${startFmt} · ${sourcesTxt}</div>
+            </div>
+            <button class="btn btn-xs btn-outline" onclick="deleteSavingsPlan('${plan.id}')" title="Delete">🗑️</button>
+          </div>
+          <div class="savings-progress-wrap">
+            <div class="savings-progress-bar">
+              <div class="savings-progress-fill${isReady ? ' full' : ''}" style="width:${pct}%"></div>
+            </div>
+            <div class="savings-progress-text">
+              <span>⚡ ${progress} / ${plan.target} DP</span>
+              <span class="savings-pct">${pct}%</span>
+            </div>
+          </div>
+          ${isReady
+            ? `<button class="btn btn-primary btn-sm savings-claim-btn" ${canAfford ? '' : 'disabled'}
+                onclick="claimSavingsPlan('${plan.id}')">
+                ${canAfford ? '🏆 Claim Reward!' : `Need ${plan.target} DP (have ${dp})`}
+              </button>`
+            : `<div class="savings-remaining">🔒 ${plan.target - progress} DP to go</div>`}
+        </div>`;
+    }).join('');
+  }
+
+  if (completed.length > 0) {
+    html += `<h3 class="section-title" style="margin-top:24px;">✅ Completed</h3>`;
+    html += completed.map(plan => {
+      const completedFmt = plan.completedDate
+        ? new Date(plan.completedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        : '';
+      return `
+        <div class="savings-card savings-completed">
+          <div class="savings-header">
+            <div class="savings-info">
+              <div class="savings-name">✅ ${escapeHtml(plan.name)}</div>
+              <div class="savings-meta">Claimed${completedFmt ? ' on ' + completedFmt : ''} · ⚡ ${plan.target} DP</div>
+            </div>
+            <button class="btn btn-xs btn-outline" onclick="deleteSavingsPlan('${plan.id}')" title="Remove">🗑️</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  container.innerHTML = html;
+}
+
+function claimSavingsPlan(planId) {
+  const plans = DB.getSavingsPlans();
+  const plan = plans.find(p => p.id === planId);
+  if (!plan) return;
+
+  if (DB.getDP() < plan.target) {
+    showToast('Not enough discipline points!', 'error');
+    return;
+  }
+
+  addDisciplinePoints(-plan.target, `Savings claimed: ${plan.name}`);
+  plan.completed = true;
+  plan.completedDate = new Date().toISOString();
+  DB.saveSavingsPlans(plans);
+
+  addActivity('reward', `Claimed savings reward "${plan.name}" (-${plan.target} DP)`);
+  showToast(`🎉 Reward unlocked: ${plan.name}!`, 'success');
+  fireConfetti();
+  updateDPDisplays();
+  renderSavingsPlans();
+  renderRewards('micro');
+  renderRewards('weekly');
+  renderRewards('monthly');
+}
+
+function deleteSavingsPlan(planId) {
+  if (!confirm('Delete this savings plan?')) return;
+  let plans = DB.getSavingsPlans();
+  plans = plans.filter(p => p.id !== planId);
+  DB.saveSavingsPlans(plans);
+  showToast('Savings plan deleted', 'info');
+  renderSavingsPlans();
 }

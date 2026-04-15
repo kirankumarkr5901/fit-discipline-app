@@ -322,6 +322,18 @@
   to { opacity: 0; transform: translateX(30px); }
 }
 
+/* ==================== CONFETTI CANVAS ==================== */
+.confetti-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 9999;
+  display: none;
+}
+
 /* ==================== PR BANNER ==================== */
 .pr-banner {
   background: linear-gradient(135deg, var(--accent-green), #34d399);

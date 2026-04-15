@@ -231,6 +231,7 @@ function logRun() {
       totalPointsForRun += bonus;
       document.getElementById('run-new-pr-banner').style.display = 'block';
       showToast(`New PR! 🎉 +${totalPointsForRun} discipline points!`, 'success');
+      fireConfetti();
     } else if (rank === 2) {
       const bonus = Math.round(distance * 1.5);
       addDisciplinePoints(bonus, `New #2 PR pace! (${formatPace(pace)} min/km)`);
@@ -251,13 +252,14 @@ function logRun() {
     totalPointsForRun += bonus;
     document.getElementById('run-new-pr-banner').style.display = 'block';
     showToast(`First run logged! 🎉 +${totalPointsForRun} points!`, 'success');
+    fireConfetti();
   } else {
     showToast(`Run logged! +${totalPointsForRun} discipline points 🏃`, 'success');
   }
 
-  // Store points earned on the run for proper deduction on delete
   run.pointsEarned = totalPointsForRun;
   DB.saveRunLogs(runs);
+  checkPerfGoals();
 
   addActivity('run', `Ran ${distance}km in ${formatTime(time)} (${formatPace(pace)} min/km)`);
   document.getElementById('run-distance').value = '';

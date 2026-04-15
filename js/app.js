@@ -153,6 +153,23 @@ function openModal(id) {
   document.getElementById(id).style.display = 'flex';
 }
 
+/* ---- Refresh active page (called by real-time sync) ---- */
+function refreshCurrentPage() {
+  const active = document.querySelector('.page.active');
+  if (!active) return;
+  const pageId = active.id.replace('page-', '');
+  switch (pageId) {
+    case 'home':            refreshHome(); break;
+    case 'planner':         refreshPlanner(); break;
+    case 'workout-tracker': initWorkoutTracker(); break;
+    case 'run-tracker':     initRunTracker(); break;
+    case 'habits':          initHabits(); break;
+    case 'rewards':         initRewards(); break;
+    case 'body-metrics':    initBodyMetrics(); break;
+    case 'goals':           initGoals(); break;
+  }
+}
+
 /* ---- Init (triggered by auth.js after sign-in) ---- */
 /* The old DOMContentLoaded is replaced by auth.onAuthStateChanged → startApp() in auth.js */
 
@@ -352,4 +369,67 @@ function initPullToRefresh() {
     }
     pullDist = 0;
   }, { passive: true });
+}
+
+/* ---- Confetti Celebration ---- */
+function fireConfetti(duration = 2500) {
+  const canvas = document.getElementById('confetti-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  canvas.style.display = 'block';
+
+  const colors = ['#3b82f6', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444', '#ec4899', '#06b6d4', '#f97316'];
+  const particles = [];
+  const count = 120;
+
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height * -1,
+      w: Math.random() * 10 + 5,
+      h: Math.random() * 6 + 3,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      vx: (Math.random() - 0.5) * 4,
+      vy: Math.random() * 3 + 2,
+      rot: Math.random() * 360,
+      rotSpeed: (Math.random() - 0.5) * 8,
+      opacity: 1
+    });
+  }
+
+  const start = performance.now();
+  let animId;
+
+  function draw(now) {
+    const elapsed = now - start;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const fadeStart = duration - 600;
+    for (const p of particles) {
+      p.x += p.vx;
+      p.vy += 0.05;
+      p.y += p.vy;
+      p.rot += p.rotSpeed;
+      if (elapsed > fadeStart) p.opacity = Math.max(0, 1 - (elapsed - fadeStart) / 600);
+
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate((p.rot * Math.PI) / 180);
+      ctx.globalAlpha = p.opacity;
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    }
+
+    if (elapsed < duration) {
+      animId = requestAnimationFrame(draw);
+    } else {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      canvas.style.display = 'none';
+    }
+  }
+
+  animId = requestAnimationFrame(draw);
 }

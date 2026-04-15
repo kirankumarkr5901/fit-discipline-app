@@ -93,7 +93,7 @@ function refreshHome() {
     const cc = DB._get('completedChallenges', null);
     if (cc && Object.keys(cc).length > 0) {
       addDisciplinePoints(-30, 'Daily Challenge removal correction');
-      DB._set('completedChallenges', undefined);
+      delete DB._cache['completedChallenges'];
     }
     DB._set('_challengeCleanupDone', true);
   }
@@ -715,14 +715,33 @@ function renderBadges() {
   const grid = document.getElementById('badges-grid');
   if (!grid) return;
 
+  const prevUnlocked = window._unlockedBadges || new Set();
+  const nowUnlocked = new Set();
+
   grid.innerHTML = BADGE_DEFS.map((b, i) => {
     const unlocked = b.check();
+    if (unlocked) nowUnlocked.add(b.id);
     return `<div class="badge-item ${unlocked ? 'unlocked' : 'locked'}" onclick="showBadgeDetail(${i})" title="${b.desc}">
       <span class="badge-icon">${b.icon}</span>
       <span class="badge-name">${b.name}</span>
       ${unlocked ? '<span class="badge-check">✓</span>' : ''}
     </div>`;
   }).join('');
+
+  // Fire confetti for newly unlocked badges
+  if (prevUnlocked.size > 0) {
+    for (const id of nowUnlocked) {
+      if (!prevUnlocked.has(id)) {
+        const badge = BADGE_DEFS.find(b => b.id === id);
+        if (badge) {
+          showToast(`🏅 Badge unlocked: ${badge.name}!`, 'success');
+          fireConfetti(3000);
+        }
+        break;
+      }
+    }
+  }
+  window._unlockedBadges = nowUnlocked;
 }
 
 function showBadgeDetail(index) {

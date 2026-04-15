@@ -22,6 +22,21 @@ function getWorkoutTrackerTemplate() {
       <select id="tracker-plan-select" onchange="onPlanChange()"></select>
     </div>
 
+    <div class="workout-cal-section collapsed">
+      <div class="workout-cal-toggle" onclick="this.parentElement.classList.toggle('collapsed')">
+        <h2 class="section-title" style="margin:0">📅 Workout Calendar</h2>
+        <span class="workout-cal-arrow">▾</span>
+      </div>
+      <div class="workout-cal-body">
+        <div class="workout-cal-nav">
+          <button class="btn btn-icon" onclick="changeWorkoutCalMonth(-1)">◀</button>
+          <span id="workout-cal-month-label" class="goals-month-label"></span>
+          <button class="btn btn-icon" onclick="changeWorkoutCalMonth(1)">▶</button>
+        </div>
+        <div id="workout-cal-grid" class="workout-cal-grid"></div>
+      </div>
+    </div>
+
     <!-- Day Tabs -->
     <div id="day-tabs" class="day-tabs"></div>
 
@@ -73,21 +88,6 @@ function getWorkoutTrackerTemplate() {
         <input type="hidden" id="swap-workout-plan-id" />
         <input type="hidden" id="swap-workout-from-day" />
         <button class="btn btn-primary" onclick="confirmSwapWorkout()">Move</button>
-      </div>
-    </div>
-
-    <div class="workout-cal-section collapsed">
-      <div class="workout-cal-toggle" onclick="this.parentElement.classList.toggle('collapsed')">
-        <h2 class="section-title" style="margin:0">📅 Workout Calendar</h2>
-        <span class="workout-cal-arrow">▾</span>
-      </div>
-      <div class="workout-cal-body">
-        <div class="workout-cal-nav">
-          <button class="btn btn-icon" onclick="changeWorkoutCalMonth(-1)">◀</button>
-          <span id="workout-cal-month-label" class="goals-month-label"></span>
-          <button class="btn btn-icon" onclick="changeWorkoutCalMonth(1)">▶</button>
-        </div>
-        <div id="workout-cal-grid" class="workout-cal-grid"></div>
       </div>
     </div>`;
 }
@@ -824,6 +824,7 @@ function saveWorkoutLog() {
   if (newValue > 0 && newValue >= oldLifetimePR && oldLifetimePR > 0) {
     addDisciplinePoints(1, `Workout PR: ${wName}`);
     showToast(`New PR for ${wName}! +1 discipline point 🎉`, 'success');
+    fireConfetti();
   } else {
     showToast('Workout logged!', 'success');
   }
@@ -831,6 +832,7 @@ function saveWorkoutLog() {
   addActivity('workout', `Logged ${wName}: ${wType === 'strength' ? logData.weight + 'kg × ' + logData.reps + ' × ' + logData.sets : logData.time + 'min × ' + logData.sets}`);
   closeModal('log-workout-modal');
   loadWorkoutTracker();
+  checkPerfGoals();
 }
 
 function getLifetimePRValue(workoutId, planId, type) {
@@ -1159,10 +1161,16 @@ function showWorkoutCalDetail(dateStr) {
         const log = dayLogs[planId][wId];
         const name = nameMap[wId] || 'Workout';
         let detail = '';
-        if (log.sets) {
-          detail = log.sets.map(s => s.weight ? `${s.weight}kg × ${s.reps}` : `${s.reps} reps`).join(', ');
-        } else if (log.duration) {
-          detail = `${log.duration} min`;
+        if (log.type === 'strength') {
+          if (log.bodyweight != null) {
+            const addedLabel = log.addedWeight > 0 ? ` + ${log.addedWeight}kg` : '';
+            detail = `${log.bodyweight}kg BW${addedLabel} = ${log.weight}kg × ${log.reps} reps × ${log.sets} sets`;
+          } else {
+            const modeLabel = log.weightMode === 'perside' ? ' (per side)' : '';
+            detail = `${log.weight}kg${modeLabel} × ${log.reps} reps × ${log.sets} sets`;
+          }
+        } else if (log.time) {
+          detail = `${formatTime(log.time)} × ${log.sets} sets${log.weight ? ' · ' + log.weight + 'kg' : ''}`;
         }
         workouts.push({ name, detail });
       }

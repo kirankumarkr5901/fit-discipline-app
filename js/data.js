@@ -6,8 +6,9 @@ const DB = {
   _cache: {},
   _syncTimeout: null,
   _userId: null,
-  _loaded: false,       // true only after successful Firestore load
+  _loaded: false,      // true only after successful Firestore load
   _loadedKeys: null,    // snapshot of keys loaded from Firestore (to detect empty-overwrite)
+  _unsubscribe: null,   // real-time listener unsubscribe fn
 
   _get(key, fallback) {
     if (!(key in this._cache)) {
@@ -25,7 +26,11 @@ const DB = {
       console.warn('DB._set blocked – data not loaded yet');
       return;
     }
-    this._cache[key] = value;
+    if (value === undefined) {
+      delete this._cache[key];
+    } else {
+      this._cache[key] = value;
+    }
     this._saveLocalBackup();
     this._scheduleSync();
   },
@@ -39,10 +44,8 @@ const DB = {
     if (this._syncTimeout) {
       clearTimeout(this._syncTimeout);
       this._syncTimeout = null;
-      // Fire-and-forget: browser may kill this, but local backup is already saved in _set()
       this._syncToFirestore();
     }
-    // Ensure local backup is fresh (already done in _set, but just in case)
     this._saveLocalBackup();
   },
 
@@ -57,11 +60,9 @@ const DB = {
     }
 
     try {
-      // Full overwrite so that deleted fields (e.g. unchecked habits) are removed from Firestore
       await firestore.collection('users').doc(this._userId).set(this._cache);
       this._loadedKeys = currentKeys;
       this._saveLocalBackup();
-      // Record sync time so we can detect un-synced local changes on next load
       localStorage.setItem('fd_last_sync_' + this._userId, new Date().toISOString());
     } catch (err) {
       console.error('Firestore sync error:', err);
@@ -72,6 +73,11 @@ const DB = {
     this._userId = userId;
     this._loaded = false;
     this._loadedKeys = null;
+    // Unsubscribe previous listener
+    if (this._unsubscribe) {
+      this._unsubscribe();
+      this._unsubscribe = null;
+    }
     try {
       const timeout = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Firestore load timed out')), 8000)
@@ -89,7 +95,7 @@ const DB = {
         if (backup && Object.keys(backup).length > 0) {
           console.info('No Firestore doc found – restoring from local backup');
           this._cache = backup;
-          this._loadedKeys = 0; // was empty remotely
+          this._loadedKeys = 0;
         } else {
           this._cache = {};
           this._loadedKeys = 0;
@@ -97,7 +103,6 @@ const DB = {
       }
 
       // If local backup is newer than last confirmed Firestore sync, prefer it
-      // This handles cases where _set saved locally but Firestore sync was cut off
       const backup = this._getLocalBackup(userId);
       const backupTime = localStorage.getItem('fd_backup_time_' + userId);
       const lastSyncTime = localStorage.getItem('fd_last_sync_' + userId);
@@ -117,9 +122,10 @@ const DB = {
       if (backupIsNewer) {
         this._syncToFirestore();
       }
+      // Start real-time listener for cross-device sync
+      this._startRealtimeSync(userId);
     } catch (err) {
       console.error('Firestore load error:', err);
-      // Load failed – try local backup so the app still works
       const backup = this._getLocalBackup(userId);
       if (backup && Object.keys(backup).length > 0) {
         console.info('Firestore load failed – using local backup');
@@ -127,7 +133,6 @@ const DB = {
         this._loaded = true;
         this._loadedKeys = Object.keys(backup).length;
       } else {
-        // No backup available – keep cache empty but do NOT allow writes
         this._cache = {};
         this._loaded = false;
         console.error('No local backup available. Writes are blocked until Firestore loads.');
@@ -137,10 +142,46 @@ const DB = {
 
   clearCache() {
     clearTimeout(this._syncTimeout);
+    if (this._unsubscribe) {
+      this._unsubscribe();
+      this._unsubscribe = null;
+    }
     this._cache = {};
     this._userId = null;
     this._loaded = false;
     this._loadedKeys = null;
+  },
+
+  /* ---- Real-time sync (cross-device) ---- */
+  _startRealtimeSync(userId) {
+    if (this._unsubscribe) {
+      this._unsubscribe();
+      this._unsubscribe = null;
+    }
+    console.info('[DB] Starting real-time listener for', userId);
+    this._unsubscribe = firestore.collection('users').doc(userId).onSnapshot(
+      (doc) => {
+        // Skip snapshots from our own pending writes
+        if (doc.metadata.hasPendingWrites) return;
+        // Skip if we have a pending local sync waiting to fire
+        if (this._syncTimeout) return;
+        if (!doc.exists) return;
+        const remote = doc.data();
+        if (Object.keys(remote).length === 0) return;
+        // Check if data actually changed
+        const remoteJSON = JSON.stringify(remote);
+        const localJSON = JSON.stringify(this._cache);
+        if (remoteJSON === localJSON) return;
+        console.info('[DB] Remote change detected, updating local cache');
+        this._cache = remote;
+        this._loadedKeys = Object.keys(remote).length;
+        this._saveLocalBackup();
+        try { refreshCurrentPage(); } catch (e) { /* page not ready */ }
+      },
+      (err) => {
+        console.warn('[DB] Real-time listener error:', err);
+      }
+    );
   },
 
   /* ---- Local backup (localStorage) ---- */
@@ -197,6 +238,8 @@ const DB = {
   saveBodyMetrics(b)       { this._set('bodyMetrics', b); },
   getGoals()               { return this._get('goals', []); },
   saveGoals(g)             { this._set('goals', g); },
+  getSavingsPlans()        { return this._get('savingsPlans', []); },
+  saveSavingsPlans(s)      { this._set('savingsPlans', s); },
   /* Dark mode stays in localStorage – it's a device preference */
   isDarkMode() {
     try { return JSON.parse(localStorage.getItem('fd_darkMode')) || false; }

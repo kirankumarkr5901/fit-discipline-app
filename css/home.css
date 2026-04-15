@@ -444,23 +444,23 @@
 }
 
 .streak-detail-popup {
-  position: absolute;
+  position: fixed;
   left: 50%;
-  transform: translateX(-50%);
-  bottom: calc(100% - 60px);
-  width: min(320px, calc(100% - 24px));
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(320px, calc(100% - 32px));
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg, 0 8px 24px rgba(0,0,0,0.25));
   padding: 14px;
-  z-index: 50;
+  z-index: 100;
   animation: streakPopIn 0.15s ease-out;
 }
 
 @keyframes streakPopIn {
-  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
-  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 
 .streak-detail-header {
@@ -540,6 +540,7 @@
 /* ==================== BADGES ==================== */
 .badges-card {
   margin-bottom: 32px;
+  position: relative;
 }
 
 .badges-grid {

@@ -221,3 +221,58 @@
 @media (max-width: 768px) {
   .dp-display { flex-wrap: wrap; gap: 8px; }
 }
+
+/* ==================== HABIT CATEGORY FILTER ==================== */
+.habit-category-filter {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.habit-cat-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition);
+}
+
+.habit-cat-btn:hover {
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
+.habit-cat-btn.active {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #fff;
+}
+
+/* ==================== HABIT CATEGORY BADGES ==================== */
+.habit-category-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-right: 6px;
+  text-transform: capitalize;
+}
+
+.habit-category-badge.cat-fitness { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+.habit-category-badge.cat-health { background: rgba(239, 68, 68, 0.12); color: #ef4444; }
+.habit-category-badge.cat-productivity { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+.habit-category-badge.cat-mindfulness { background: rgba(139, 92, 246, 0.15); color: #8b5cf6; }
+.habit-category-badge.cat-nutrition { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+.habit-category-badge.cat-learning { background: rgba(99, 102, 241, 0.15); color: #6366f1; }
+.habit-category-badge.cat-other { background: rgba(107, 114, 128, 0.15); color: #6b7280; }

@@ -30,6 +30,7 @@ function getHabitsTemplate() {
         </div>
       </div>
 
+      <div id="habits-category-filter" class="habit-category-filter"></div>
       <div id="habits-daily-list" class="habits-checklist"></div>
       <div id="habits-bonuses" class="bonus-section"></div>
     </div>
@@ -106,6 +107,23 @@ function changeHabitDate(delta) {
   loadHabitsDaily();
 }
 
+const HABIT_CATEGORIES = {
+  fitness: { icon: '💪', label: 'Fitness' },
+  health: { icon: '❤️', label: 'Health' },
+  productivity: { icon: '🎯', label: 'Productivity' },
+  mindfulness: { icon: '🧘', label: 'Mindfulness' },
+  nutrition: { icon: '🥗', label: 'Nutrition' },
+  learning: { icon: '📚', label: 'Learning' },
+  other: { icon: '📌', label: 'Other' }
+};
+let habitCategoryFilter = 'all';
+
+function setHabitCategoryFilter(cat) {
+  habitCategoryFilter = cat;
+  document.querySelectorAll('.habit-cat-btn').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
+  loadHabitsDaily();
+}
+
 function loadHabitsDaily() {
   const date = document.getElementById('habits-date').value;
   const habits = DB.getHabits();
@@ -113,11 +131,27 @@ function loadHabitsDaily() {
   const dayCompletions = completions[date] || {};
 
   const container = document.getElementById('habits-daily-list');
+
+  // Render category filter bar
+  const filterContainer = document.getElementById('habits-category-filter');
+  const usedCats = [...new Set(habits.map(h => h.category || 'other'))];
+  if (usedCats.length > 1) {
+    filterContainer.innerHTML = `<button class="habit-cat-btn${habitCategoryFilter === 'all' ? ' active' : ''}" data-cat="all" onclick="setHabitCategoryFilter('all')">All</button>` +
+      usedCats.map(cat => {
+        const c = HABIT_CATEGORIES[cat] || HABIT_CATEGORIES.other;
+        return `<button class="habit-cat-btn${habitCategoryFilter === cat ? ' active' : ''}" data-cat="${cat}" onclick="setHabitCategoryFilter('${cat}')">${c.icon} ${c.label}</button>`;
+      }).join('');
+  } else {
+    filterContainer.innerHTML = '';
+  }
+
   if (habits.length === 0) {
     container.innerHTML = '<p class="empty-state">No habits created. Go to Planner → Habit Management to add habits.</p>';
     document.getElementById('habits-bonuses').innerHTML = '';
     return;
   }
+
+  const filteredHabits = habitCategoryFilter === 'all' ? habits : habits.filter(h => (h.category || 'other') === habitCategoryFilter);
 
   const isPastDate = date < todayStr();
   const isFutureDate = date > todayStr();
@@ -126,7 +160,8 @@ function loadHabitsDaily() {
   const yesterdayStr = yesterday.getFullYear() + '-' + String(yesterday.getMonth() + 1).padStart(2, '0') + '-' + String(yesterday.getDate()).padStart(2, '0');
   const isLocked = date < yesterdayStr || isFutureDate;
 
-  container.innerHTML = habits.map((h, idx) => {
+  container.innerHTML = filteredHabits.map((h, idx) => {
+    const origIdx = habits.indexOf(h);
     const done = !!dayCompletions[h.id];
     const missed = !done && isPastDate;
     const streak = getHabitStreak(h.id);
@@ -139,14 +174,16 @@ function loadHabitsDaily() {
       : missed ? '❌ Missed'
       : streak > 0 ? `🔥 ${streak} day streak` : 'No streak';
     const maxStreakText = maxStreak > 0 ? ` · 🏆 Best: ${maxStreak}` : '';
+    const cat = h.category || 'other';
+    const catInfo = HABIT_CATEGORIES[cat] || HABIT_CATEGORIES.other;
     return `
-      <div class="habit-item ${itemClass}${lockedClass}" draggable="${!isLocked}" data-habit-idx="${idx}"
-           ${!isLocked ? `ondragstart="onHabitDragStart(event, ${idx})" ondragover="onHabitDragOver(event)" ondrop="onHabitDrop(event, ${idx})" ondragend="onHabitDragEnd(event)"` : ''}>
+      <div class="habit-item ${itemClass}${lockedClass}" draggable="${!isLocked}" data-habit-idx="${origIdx}"
+           ${!isLocked ? `ondragstart="onHabitDragStart(event, ${origIdx})" ondragover="onHabitDragOver(event)" ondrop="onHabitDrop(event, ${origIdx})" ondragend="onHabitDragEnd(event)"` : ''}>
         ${!isLocked ? '<div class="habit-drag-handle" onclick="event.stopPropagation()" title="Drag to reorder">⠿</div>' : '<div class="habit-lock-icon">🔒</div>'}
         <div class="habit-checkbox" ${clickHandler}>${done ? '✓' : missed ? '✗' : ''}</div>
         <div class="habit-info" ${clickHandler}>
           <div class="habit-title">${escapeHtml(h.name)}</div>
-          <div class="habit-meta">${streakText}${maxStreakText}</div>
+          <div class="habit-meta"><span class="habit-category-badge cat-${cat}">${catInfo.icon} ${catInfo.label}</span> ${streakText}${maxStreakText}</div>
         </div>
         <span class="habit-points-badge">+${h.points}</span>
         ${h.strict ? '<span class="habit-strict-badge">STRICT</span>' : ''}
@@ -214,6 +251,7 @@ function toggleHabit(habitId) {
       const dedBonus = DB.getDailyDedicationPoints();
       addDisciplinePoints(dedBonus, 'Dedication bonus: all habits completed!');
       showToast(`💪 Dedication bonus! All habits completed! +${dedBonus} pts`, 'success');
+      fireConfetti();
     }
 
     const streak = getHabitStreakForDate(habitId, date);
@@ -222,6 +260,7 @@ function toggleHabit(habitId) {
       const bonus = Math.min(streak / 7, 10) * baseConsistency;
       addDisciplinePoints(bonus, `Streak bonus (${streak} days): ${habit.name}`);
       showToast(`🔥 ${streak}-day streak bonus for ${habit.name}! +${bonus} pts`, 'success');
+      fireConfetti();
     }
   }
 

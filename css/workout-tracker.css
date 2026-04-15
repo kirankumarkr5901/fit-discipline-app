@@ -601,7 +601,8 @@
 
 /* ==================== WORKOUT CALENDAR ==================== */
 .workout-cal-section {
-  margin-top: 32px;
+  margin-top: 0;
+  margin-bottom: 16px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
