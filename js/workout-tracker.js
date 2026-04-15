@@ -166,7 +166,7 @@ function loadWorkoutTracker() {
   const allWorkouts = [];
   const daysToShow = activeDay === 'all'
     ? Object.keys(plan.workouts).filter(d => d !== 'optional')
-    : [activeDay];
+    : activeDay === 'elite' ? [] : [activeDay];
 
   // Collect elite workouts from ALL days (they are day-independent)
   const eliteWorkouts = [];
@@ -221,14 +221,26 @@ function loadWorkoutTracker() {
   const dayLogs = (logs[date] && logs[date][planId]) || {};
 
   const container = document.getElementById('workout-tracker-cards');
-  if (filtered.length === 0 && eliteWorkouts.length === 0) {
+  const showElite = activeDay === 'all';
+
+  // Elite tab selected — show only elite workouts as main content
+  if (activeDay === 'elite') {
+    if (eliteWorkouts.length === 0) {
+      container.innerHTML = '<p class="empty-state">No elite workouts found.</p>';
+      return;
+    }
+    container.innerHTML = renderWorkoutGroup(eliteWorkouts, planId, date, dayLogs, plan);
+    return;
+  }
+
+  if (filtered.length === 0 && (!showElite || eliteWorkouts.length === 0)) {
     container.innerHTML = '<p class="empty-state">No workouts for this selection. Add workouts in the Planner.</p>';
     return;
   }
 
-  // Render elite section at the top (always visible, day-independent)
+  // Render elite section at the top (only when viewing all days)
   let eliteSectionHtml = '';
-  if (eliteWorkouts.length > 0) {
+  if (eliteWorkouts.length > 0 && activeDay === 'all') {
     const eliteCards = eliteWorkouts.map(w => buildTrackerCard(w, planId, date, dayLogs, plan)).join('');
     const eliteDoneCount = eliteWorkouts.filter(w => dayLogs[w.id]).length;
     eliteSectionHtml = `<div class="elite-section">
@@ -513,6 +525,16 @@ function renderDayTabs(plan) {
       </div>`;
   }
 
+  // Count elite workouts
+  const eliteCount = countEliteWorkouts(plan);
+  if (eliteCount > 0) {
+    html += `
+      <div class="day-tab elite-tab ${activeDay === 'elite' ? 'active' : ''}" onclick="setActiveDay('elite')">
+        <span>⚡ Elite</span>
+        <span class="day-tab-count">${eliteCount}</span>
+      </div>`;
+  }
+
   const optCount = (plan.workouts['optional'] || []).length;
   if (optCount > 0) {
     html += `
@@ -523,6 +545,17 @@ function renderDayTabs(plan) {
   }
 
   container.innerHTML = html;
+}
+
+function countEliteWorkouts(plan) {
+  const seen = new Set();
+  for (const day of Object.keys(plan.workouts)) {
+    if (day === 'optional') continue;
+    for (const w of plan.workouts[day] || []) {
+      if (w.elite && !seen.has(w.id)) seen.add(w.id);
+    }
+  }
+  return seen.size;
 }
 
 function setActiveDay(day) {

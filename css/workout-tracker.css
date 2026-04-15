@@ -101,6 +101,16 @@
   color: #fff;
 }
 
+.day-tab.elite-tab {
+  border-color: var(--accent-purple, #9b59b6);
+  color: var(--accent-purple, #9b59b6);
+}
+
+.day-tab.elite-tab.active {
+  background: var(--accent-purple, #9b59b6);
+  color: #fff;
+}
+
 /* Day Sections (All days view) */
 .day-section {
   margin-bottom: 28px;
