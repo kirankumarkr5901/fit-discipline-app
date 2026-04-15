@@ -715,14 +715,44 @@ function renderBadges() {
   const grid = document.getElementById('badges-grid');
   if (!grid) return;
 
-  grid.innerHTML = BADGE_DEFS.map(b => {
+  grid.innerHTML = BADGE_DEFS.map((b, i) => {
     const unlocked = b.check();
-    return `<div class="badge-item ${unlocked ? 'unlocked' : 'locked'}" title="${b.desc}">
+    return `<div class="badge-item ${unlocked ? 'unlocked' : 'locked'}" onclick="showBadgeDetail(${i})" title="${b.desc}">
       <span class="badge-icon">${b.icon}</span>
       <span class="badge-name">${b.name}</span>
       ${unlocked ? '<span class="badge-check">✓</span>' : ''}
     </div>`;
   }).join('');
+}
+
+function showBadgeDetail(index) {
+  const b = BADGE_DEFS[index];
+  if (!b) return;
+  const unlocked = b.check();
+  const existing = document.getElementById('badge-detail-popup');
+  if (existing) existing.remove();
+
+  const popup = document.createElement('div');
+  popup.id = 'badge-detail-popup';
+  popup.className = 'streak-detail-popup';
+  popup.innerHTML = `
+    <div class="streak-detail-header">
+      <span class="streak-detail-date">${b.icon} ${b.name}</span>
+      <button class="btn-icon streak-detail-close" onclick="this.closest('.streak-detail-popup').remove()">&times;</button>
+    </div>
+    <div style="padding:8px 0;font-size:0.9rem;color:var(--text-secondary);">${b.desc}</div>
+    <div style="font-weight:700;color:${unlocked ? 'var(--accent-green)' : 'var(--text-muted)'};">${unlocked ? '✅ Unlocked!' : '🔒 Not yet unlocked'}</div>`;
+  document.querySelector('.badges-card').appendChild(popup);
+
+  setTimeout(() => {
+    function onOutside(e) {
+      if (!popup.contains(e.target) && !e.target.closest('.badge-item')) {
+        popup.remove();
+        document.removeEventListener('click', onOutside);
+      }
+    }
+    document.addEventListener('click', onOutside);
+  }, 0);
 }
 
 /* ---- Muscle Group Heatmap ---- */

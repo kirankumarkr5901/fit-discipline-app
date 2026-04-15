@@ -1036,6 +1036,7 @@ function renderWorkoutCalendar() {
 
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const workoutLogs = DB.getWorkoutLogs();
+  const runLogs = DB.getRunLogs();
   const plans = DB.getPlans();
   const todayStr_ = todayStr();
 
@@ -1047,6 +1048,39 @@ function renderWorkoutCalendar() {
       for (const w of p.workouts[dk]) {
         nameMap[w.id] = w.name;
       }
+    }
+  }
+
+  // Build per-day activity data
+  const dayActivity = {};
+  for (let day = 1; day <= daysInMonth; day++) {
+    const ds = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+    const hasWorkout = workoutLogs[ds] && Object.keys(workoutLogs[ds]).some(pid => Object.keys(workoutLogs[ds][pid]).length > 0);
+    const hasRun = runLogs.some(r => r.date === ds);
+    dayActivity[ds] = { hasWorkout, hasRun };
+  }
+
+  // Find consecutive inactive days (no workout AND no run) to detect missed streaks
+  const inactiveDays = {};
+  for (let day = 1; day <= daysInMonth; day++) {
+    const ds = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+    if (ds >= todayStr_) continue; // don't mark today or future
+    const data = dayActivity[ds];
+    if (!data.hasWorkout && !data.hasRun) {
+      // Count consecutive inactive days ending at this day
+      let count = 0;
+      const d2 = new Date(year, month, day);
+      while (true) {
+        const ds2 = d2.getFullYear() + '-' + String(d2.getMonth() + 1).padStart(2, '0') + '-' + String(d2.getDate()).padStart(2, '0');
+        const a = dayActivity[ds2];
+        if (a && !a.hasWorkout && !a.hasRun && ds2 < todayStr_) {
+          count++;
+          d2.setDate(d2.getDate() - 1);
+        } else {
+          break;
+        }
+      }
+      if (count >= 3) inactiveDays[ds] = true;
     }
   }
 
@@ -1062,6 +1096,7 @@ function renderWorkoutCalendar() {
     const dayLogs = workoutLogs[ds];
     const isToday = ds === todayStr_ ? ' wcal-today' : '';
     const isFuture = ds > todayStr_ ? ' wcal-future' : '';
+    const isMissed = inactiveDays[ds] ? ' wcal-missed' : '';
 
     let workoutNames = [];
     if (dayLogs) {
@@ -1072,19 +1107,25 @@ function renderWorkoutCalendar() {
       }
     }
 
+    const data = dayActivity[ds];
     const hasWorkouts = workoutNames.length > 0 ? ' wcal-active' : '';
     const dots = workoutNames.length > 0
       ? `<div class="wcal-dots">${workoutNames.slice(0, 3).map(() => '<span class="wcal-dot"></span>').join('')}${workoutNames.length > 3 ? '<span class="wcal-dot-more">+</span>' : ''}</div>`
       : '';
 
-    const tooltipItems = workoutNames.length > 0 ? workoutNames.join(', ') : '';
-    const tooltip = tooltipItems ? ` title="${day}: ${tooltipItems}"` : '';
+    // Smart day tag: run emoji if ran, rest emoji if no activity (past), nothing for future
+    let dayTag = '';
+    if (ds < todayStr_) {
+      if (data.hasRun) {
+        dayTag = '<span class="streak-day-tag run">🏃</span>';
+      } else if (!data.hasWorkout) {
+        dayTag = inactiveDays[ds] ? '<span class="streak-day-tag missed">❌</span>' : '<span class="streak-day-tag rest">😴</span>';
+      }
+    } else if (ds === todayStr_) {
+      if (data.hasRun) dayTag = '<span class="streak-day-tag run">🏃</span>';
+    }
 
-    const cellDate = new Date(year, month, day);
-    const dow = cellDate.getDay();
-    const dayTag = dow === 6 ? '<span class="streak-day-tag run">🏃</span>' : dow === 0 ? '<span class="streak-day-tag rest">😴</span>' : '';
-
-    html += `<div class="wcal-cell${hasWorkouts}${isToday}${isFuture}"${tooltip} onclick="showWorkoutCalDetail('${ds}')">
+    html += `<div class="wcal-cell${hasWorkouts}${isToday}${isFuture}${isMissed}" onclick="showWorkoutCalDetail('${ds}')">
       <span class="wcal-day-num">${day}</span>
       ${dayTag}
       ${dots}
@@ -1096,6 +1137,7 @@ function renderWorkoutCalendar() {
 
 function showWorkoutCalDetail(dateStr) {
   const workoutLogs = DB.getWorkoutLogs();
+  const runLogs = DB.getRunLogs();
   const plans = DB.getPlans();
   const dayLogs = workoutLogs[dateStr];
 
@@ -1127,28 +1169,42 @@ function showWorkoutCalDetail(dateStr) {
     }
   }
 
+  // Day's runs
+  const dayRuns = runLogs.filter(r => r.date === dateStr);
+
   const popup = document.createElement('div');
   popup.id = 'wcal-detail-popup';
   popup.className = 'streak-detail-popup';
 
-  if (workouts.length === 0) {
+  const totalItems = workouts.length + dayRuns.length;
+
+  if (totalItems === 0) {
     popup.innerHTML = `
       <div class="streak-detail-header">
         <span class="streak-detail-date">${formatDate(dateStr)}</span>
         <button class="btn-icon streak-detail-close" onclick="this.closest('.streak-detail-popup').remove()">&times;</button>
       </div>
-      <div class="streak-detail-empty">No workouts logged</div>`;
+      <div class="streak-detail-empty">No activity logged</div>`;
   } else {
+    const summary = [];
+    if (workouts.length > 0) summary.push(`${workouts.length} workout${workouts.length > 1 ? 's' : ''}`);
+    if (dayRuns.length > 0) summary.push(`${dayRuns.length} run${dayRuns.length > 1 ? 's' : ''}`);
+
     popup.innerHTML = `
       <div class="streak-detail-header">
         <span class="streak-detail-date">${formatDate(dateStr)}</span>
-        <span class="streak-detail-dp">${workouts.length} workout${workouts.length > 1 ? 's' : ''}</span>
+        <span class="streak-detail-dp">${summary.join(' · ')}</span>
         <button class="btn-icon streak-detail-close" onclick="this.closest('.streak-detail-popup').remove()">&times;</button>
       </div>
       ${workouts.map(w => `
         <div class="streak-detail-group">
           <div class="streak-detail-group-title">💪 ${escapeHtml(w.name)}</div>
           ${w.detail ? `<div style="font-size:0.8rem;color:var(--text-secondary);padding-left:20px;">${escapeHtml(w.detail)}</div>` : ''}
+        </div>`).join('')}
+      ${dayRuns.map(r => `
+        <div class="streak-detail-group">
+          <div class="streak-detail-group-title">🏃 ${r.distance}km run</div>
+          <div style="font-size:0.8rem;color:var(--text-secondary);padding-left:20px;">${r.time > 0 ? formatTime(r.time) + ' · ' + formatPace(r.pace) + ' /km' : 'No time recorded'}</div>
         </div>`).join('')}`;
   }
 

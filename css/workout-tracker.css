@@ -698,6 +698,15 @@
   opacity: 0.3;
 }
 
+.wcal-cell.wcal-missed {
+  background: color-mix(in srgb, #ef4444 12%, var(--bg-secondary));
+  border-color: #ef4444;
+}
+
+.wcal-cell.wcal-missed .wcal-day-num {
+  color: #ef4444;
+}
+
 .wcal-day-num {
   font-size: 0.7rem;
   font-weight: 600;
