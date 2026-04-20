@@ -214,6 +214,15 @@ function toggleHabit(habitId) {
   if (!habit) return;
 
   if (completions[date][habitId]) {
+    // Check if a streak bonus was awarded (streak before uncheck was a multiple of 7)
+    const streakBefore = getHabitStreakForDate(habitId, date);
+    if (streakBefore > 0 && streakBefore % 7 === 0) {
+      const baseConsistency = habit.consistencyPoints != null ? habit.consistencyPoints : 5;
+      const weekNum = streakBefore / 7;
+      const bonus = baseConsistency + (weekNum - 1) * 5;
+      addDisciplinePoints(-bonus, `Streak bonus revoked (${streakBefore} days): ${habit.name}`);
+      showToast(`Streak bonus revoked for ${habit.name} (−${bonus} pts)`, 'warning');
+    }
     // Check if all habits were completed before this uncheck (dedication bonus was awarded)
     const wasAllDone = habits.every(h => completions[date][h.id]);
     delete completions[date][habitId];
@@ -254,11 +263,15 @@ function toggleHabit(habitId) {
       fireConfetti();
     }
 
+    // Save completions first so getHabitStreakForDate reads the updated data
+    DB.saveHabitCompletions(completions);
+
     const streak = getHabitStreakForDate(habitId, date);
     if (streak > 0 && streak % 7 === 0) {
       const baseConsistency = habit.consistencyPoints != null ? habit.consistencyPoints : 5;
-      const bonus = Math.min(streak / 7, 10) * baseConsistency;
-      addDisciplinePoints(bonus, `Streak bonus (${streak} days): ${habit.name}`);
+      const weekNum = streak / 7;
+      const bonus = baseConsistency + (weekNum - 1) * 5;
+      addDisciplinePoints(bonus, `Streak bonus (${streak} days / ${weekNum} week${weekNum > 1 ? 's' : ''}): ${habit.name}`);
       showToast(`🔥 ${streak}-day streak bonus for ${habit.name}! +${bonus} pts`, 'success');
       fireConfetti();
     }
@@ -296,11 +309,11 @@ function renderBonuses(date, habits, dayCompletions) {
 
   for (const h of habits) {
     const streak = getHabitStreakForDate(h.id, date);
-    if (streak >= 7) {
-      const weeks = Math.floor(streak / 7);
+    if (streak > 0 && streak % 7 === 0) {
+      const weeks = streak / 7;
       const baseConsistency = h.consistencyPoints != null ? h.consistencyPoints : 5;
-      const bonus = Math.min(weeks, 10) * baseConsistency;
-      bonuses.push(`<div class="bonus-badge streak">🔥 ${escapeHtml(h.name)}: ${streak}-day streak (+${bonus} bonus pts)</div>`);
+      const bonus = baseConsistency + (weeks - 1) * 5;
+      bonuses.push(`<div class="bonus-badge streak">🔥 ${escapeHtml(h.name)}: ${streak}-day streak (${weeks} week${weeks > 1 ? 's' : ''}) — earned +${bonus} bonus pts!</div>`);
     }
   }
 
