@@ -198,6 +198,7 @@
   z-index: 3000;
   padding: 24px;
   backdrop-filter: blur(4px);
+  overflow: hidden;
 }
 
 .modal {
@@ -208,6 +209,8 @@
   max-width: 480px;
   max-height: 85vh;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   box-shadow: var(--shadow-lg);
   animation: modalIn 0.25s ease;
 }
@@ -224,10 +227,17 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+  position: sticky;
+  top: -28px;
+  padding: 28px 0 16px;
+  margin: -28px 0 20px;
+  background: var(--bg-secondary);
+  z-index: 1;
+  border-bottom: 1px solid var(--border);
 }
 
-.modal-header h2 { font-size: 1.2rem; }
-.modal-header .btn-icon { font-size: 1.5rem; border: none; background: none; }
+.modal-header h2 { font-size: 1.2rem; margin: 0; }
+.modal-header .btn-icon { font-size: 1.5rem; border: none; background: none; cursor: pointer; }
 
 /* ==================== TABLE ==================== */
 .table-wrapper { overflow-x: auto; margin-bottom: 24px; }
@@ -356,7 +366,8 @@
 @media (max-width: 768px) {
   .cards-grid,
   .rewards-grid { grid-template-columns: 1fr; }
-  .modal { padding: 20px; margin: 12px; }
+  .modal { padding: 20px; margin: 12px; max-height: 90vh; }
+  .modal-header { top: -20px; padding: 20px 0 12px; margin: -20px 0 16px; }
   .tabs { -webkit-overflow-scrolling: touch; }
   .form-row.inline { flex-wrap: wrap; }
   .stat-value { font-size: 1.6rem; }

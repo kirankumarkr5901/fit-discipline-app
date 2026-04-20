@@ -3,7 +3,7 @@
    Cache-first for static assets, network-first for API
    =============================================== */
 
-const CACHE_NAME = 'fit-disciple-v14';
+const CACHE_NAME = 'fit-disciple-v15';
 const STATIC_ASSETS = [
   './',
   './index.html',

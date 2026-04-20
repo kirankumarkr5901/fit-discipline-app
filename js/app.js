@@ -147,10 +147,12 @@ function showToast(message, type = 'info') {
 /* ---- Modal helpers ---- */
 function closeModal(id) {
   document.getElementById(id).style.display = 'none';
+  document.body.style.overflow = '';
 }
 
 function openModal(id) {
   document.getElementById(id).style.display = 'flex';
+  document.body.style.overflow = 'hidden';
 }
 
 /* ---- Refresh active page (called by real-time sync) ---- */
